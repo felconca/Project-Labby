@@ -1,6 +1,7 @@
 node_modules/
 .env
 public/old/*.html
+data/models/*.gguf
 data/*.sqlite
 data/*.sqlite-journal
 *.log
