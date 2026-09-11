@@ -2241,6 +2241,16 @@ function applyTheme(pref) {
   const iconName = pref === "dark" ? "moon" : pref === "light" ? "sun" : "monitor";
   const iconEl = document.getElementById("themeIcon");
   if (iconEl) iconEl.innerHTML = icon(iconName, 13);
+
+  // Update #logoBench image source according to the resolved theme.
+  const logoEl = document.getElementById("logoBench");
+  if (logoEl) {
+    if (resolvedTheme(pref) === "dark") {
+      logoEl.src = "assets/img/light.png";
+    } else {
+      logoEl.src = "assets/img/dark.png";
+    }
+  }
 }
 
 function setTheme(pref) {
