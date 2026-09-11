@@ -156,6 +156,8 @@ function makeBlankTab() {
     fileHandle: null, // FileSystemFileHandle when saved/opened via the native picker (Chromium only)
     boundFilename: null, // filename this tab is linked to, so Save doesn't re-prompt
     dirty: false, // true when the query has changed since the last save to boundFilename
+    chatSessions: [], // this tab's own chat conversations — separate from every other tab's
+    activeChatSessionId: null,
   };
 }
 
@@ -173,6 +175,8 @@ function makeFilledTab(connId, dbName, query, title) {
     fileHandle: null,
     boundFilename: null,
     dirty: false,
+    chatSessions: [],
+    activeChatSessionId: null,
   };
 }
 
@@ -205,6 +209,8 @@ function persistSession() {
         query: t.query,
         view: t.view,
         boundFilename: t.boundFilename || null,
+        chatSessions: t.chatSessions || [],
+        activeChatSessionId: t.activeChatSessionId || null,
       })),
     };
     localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
@@ -241,10 +247,16 @@ function restoreSession() {
       fileHandle: null,
       boundFilename: t.boundFilename || null,
       dirty: false,
+      chatSessions: Array.isArray(t.chatSessions) ? t.chatSessions : [],
+      activeChatSessionId: t.activeChatSessionId || null,
     }));
     tabs.forEach((t) => {
       const m = /^tab(\d+)$/.exec(t.id);
       if (m) tabSeq = Math.max(tabSeq, parseInt(m[1], 10));
+      (t.chatSessions || []).forEach((s) => {
+        const sm = /^chatsess(\d+)$/.exec(s.id || "");
+        if (sm) chatSessionSeq = Math.max(chatSessionSeq, parseInt(sm[1], 10));
+      });
     });
     activeTabId = tabs.some((t) => t.id === payload.activeTabId) ? payload.activeTabId : tabs[0].id;
     return true;
@@ -543,6 +555,8 @@ ${icon("filePlus", 30)}
 <div class="sub">Click "+" in the tab bar to start a new query, or pick a table from the sidebar.</div>
 </div>`;
     highlightActiveTreeRow();
+    updateChatContextBar();
+    renderChatPane();
     return;
   }
 
@@ -556,6 +570,8 @@ ${icon("filePlus", 30)}
   select.value = conn ? conn.id : "";
   renderResults(tab);
   highlightActiveTreeRow();
+  updateChatContextBar();
+  renderChatPane();
 }
 
 /* =========================================================================
@@ -667,6 +683,7 @@ codeInput.addEventListener("input", () => {
   }
   schedulePersist();
   updateAutocomplete();
+  updateChatContextBar();
 });
 codeInput.addEventListener("scroll", () => {
   highlightLayer.scrollTop = codeInput.scrollTop;
@@ -1210,180 +1227,16 @@ async function runQuery(tab, sqlOverride) {
   }
   tab.running = false;
   renderTabs();
-  if (tab.id === activeTabId) renderResults(tab);
+  if (tab.id === activeTabId) {
+    renderResults(tab);
+    updateChatContextBar();
+  }
   loadHistory();
 }
 
 document.getElementById("runBtn").addEventListener("click", () => {
   const tab = getActiveTab();
   if (tab) runQuery(tab, codeInput.value);
-});
-
-/* Responsive header menu */
-const mobileConnectionSelect = document.getElementById("mobileConnectionSelect");
-const mobileThemeSelect = document.getElementById("mobileThemeSelect");
-const mobileThemeIcon = document.getElementById("mobileThemeIcon");
-const headerMore = document.getElementById("headerMore");
-const headerMoreBtn = document.getElementById("headerMoreBtn");
-const connectionSelect = document.getElementById("connectionSelect");
-const themeSelect = document.getElementById("themeSelect");
-
-function syncMobileHeader() {
-  if (mobileConnectionSelect && connectionSelect) {
-    mobileConnectionSelect.innerHTML = connectionSelect.innerHTML;
-    mobileConnectionSelect.value = connectionSelect.value;
-  }
-  if (mobileThemeSelect && themeSelect) {
-    mobileThemeSelect.value = themeSelect.value;
-    if (mobileThemeIcon) mobileThemeIcon.innerHTML = document.getElementById("themeIcon").innerHTML;
-  }
-}
-
-mobileConnectionSelect?.addEventListener("change", () => {
-  connectionSelect.value = mobileConnectionSelect.value;
-  connectionSelect.dispatchEvent(new Event("change", { bubbles: true }));
-});
-mobileThemeSelect?.addEventListener("change", () => {
-  themeSelect.value = mobileThemeSelect.value;
-  themeSelect.dispatchEvent(new Event("change", { bubbles: true }));
-  syncMobileHeader();
-});
-connectionSelect?.addEventListener("change", syncMobileHeader);
-themeSelect?.addEventListener("change", syncMobileHeader);
-
-headerMoreBtn?.addEventListener("click", (e) => {
-  e.stopPropagation();
-  const open = headerMore.classList.toggle("open");
-  headerMoreBtn.setAttribute("aria-expanded", String(open));
-  if (open) syncMobileHeader();
-});
-
-document.addEventListener("click", (e) => {
-  if (!headerMore?.contains(e.target)) {
-    headerMore?.classList.remove("open");
-    headerMoreBtn?.setAttribute("aria-expanded", "false");
-  }
-});
-
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    headerMore?.classList.remove("open");
-    headerMoreBtn?.setAttribute("aria-expanded", "false");
-  }
-});
-
-/* Compact toolbar menu for tablet/mobile */
-const toolbarMore = document.getElementById("toolbarMore");
-const toolbarMoreBtn = document.getElementById("toolbarMoreBtn");
-
-toolbarMoreBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  const isOpen = toolbarMore.classList.toggle("open");
-  toolbarMoreBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
-});
-
-document.querySelectorAll("[data-toolbar-action]").forEach((menuItem) => {
-  menuItem.addEventListener("click", () => {
-    const target = document.getElementById(menuItem.dataset.toolbarAction);
-    if (target && !target.disabled) {
-      target.click();
-    }
-    toolbarMore.classList.remove("open");
-    toolbarMoreBtn.setAttribute("aria-expanded", "false");
-  });
-});
-
-/* Show workspace panels from the compact toolbar menu. On desktop this
-   expands the existing sidebars; on tablet/mobile the selected panel
-   opens as an overlay so the SQL workbench stays usable underneath. */
-function showToolbarPanel(panel) {
-  const workspace = document.querySelector(".workspace");
-  const mobile = window.matchMedia("(max-width: 920px)").matches;
-  if (!workspace) return;
-
-  workspace.classList.remove("mobile-panel-connections", "mobile-panel-chat", "mobile-panel-history");
-
-  if (panel === "connections") {
-    if (mobile) {
-      leftCollapsed = false;
-      document.getElementById("sidebarLeft")?.classList.remove("collapsed");
-      workspace.classList.add("mobile-panel-connections");
-    } else {
-      if (leftCollapsed) toggleLeftSidebar();
-    }
-  } else if (panel === "chat" || panel === "history") {
-    setSessionTab(panel);
-    if (mobile) {
-      rightCollapsed = false;
-      document.getElementById("sidebarRight")?.classList.remove("collapsed");
-      workspace.classList.add(`mobile-panel-${panel}`);
-    } else {
-      if (rightCollapsed) toggleRightSidebar();
-    }
-  }
-
-  applyWorkspaceColumns();
-  updateSidebarToggleIcons();
-  persistUiPrefs();
-}
-
-document.querySelectorAll("[data-panel-action]").forEach((menuItem) => {
-  menuItem.addEventListener("click", () => {
-    showToolbarPanel(menuItem.dataset.panelAction);
-    toolbarMore.classList.remove("open");
-    toolbarMoreBtn.setAttribute("aria-expanded", "false");
-  });
-});
-
-document.addEventListener("click", (e) => {
-  if (!toolbarMore.contains(e.target)) {
-    toolbarMore.classList.remove("open");
-    toolbarMoreBtn.setAttribute("aria-expanded", "false");
-  }
-});
-
-// Responsive results toolbar menu. The real result buttons stay in the DOM so
-// their existing handlers/state continue to work; mobile menu items trigger them.
-const resultsMore = document.getElementById("resultsMore");
-const resultsMoreBtn = document.getElementById("resultsMoreBtn");
-
-resultsMoreBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  const isOpen = resultsMore.classList.toggle("open");
-  resultsMoreBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
-});
-
-document.querySelectorAll("[data-results-action]").forEach((menuItem) => {
-  menuItem.addEventListener("click", () => {
-    const target = document.getElementById(menuItem.dataset.resultsAction);
-    if (target && !target.disabled) target.click();
-    resultsMore.classList.remove("open");
-    resultsMoreBtn.setAttribute("aria-expanded", "false");
-  });
-});
-
-document.addEventListener("click", (e) => {
-  if (!resultsMore.contains(e.target)) {
-    resultsMore.classList.remove("open");
-    resultsMoreBtn.setAttribute("aria-expanded", "false");
-  }
-});
-
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    resultsMore.classList.remove("open");
-    resultsMoreBtn.setAttribute("aria-expanded", "false");
-  }
-});
-
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    toolbarMore.classList.remove("open");
-    toolbarMoreBtn.setAttribute("aria-expanded", "false");
-    document
-      .querySelector(".workspace")
-      ?.classList.remove("mobile-panel-connections", "mobile-panel-chat", "mobile-panel-history");
-  }
 });
 
 function setStatus(kind, text) {
@@ -1404,8 +1257,6 @@ function renderResults(tab) {
   document.getElementById("viewTableBtn").classList.toggle("is-active", tab.view === "table");
   document.getElementById("viewJsonBtn").classList.toggle("is-active", tab.view === "json");
   document.getElementById("copyResultLabel").textContent = tab.view === "json" ? "Copy JSON" : "Copy CSV";
-  const resultMenuCopyLabel = document.querySelector("[data-results-copy-label]");
-  if (resultMenuCopyLabel) resultMenuCopyLabel.textContent = tab.view === "json" ? "Copy JSON" : "Copy CSV";
 
   if (!tab.result) {
     setStatus("idle", "Not run yet");
@@ -1742,15 +1593,116 @@ document.getElementById("saveConn").addEventListener("click", async () => {
 });
 
 /* =========================================================================
-   CHAT MODEL PICKER — Cursor-style Cloud/Local selector. UI only for now:
-   the choice is remembered (localStorage) and reflected in the assistant's
-   placeholder reply, but no model is actually wired up or loaded yet.
-   Local models are intended to run via node-llama-cpp once that's built.
+   AI PROVIDER KEYS MODAL — save/remove encrypted API keys per provider.
+   Keys never round-trip back to the browser once saved; the modal only
+   ever shows a configured/not-configured status.
+   ========================================================================= */
+const PROVIDER_LABELS = { anthropic: "Anthropic (Claude)", openai: "OpenAI (GPT)", xai: "xAI (Grok)" };
+const aiSettingsOverlay = document.getElementById("aiSettingsOverlay");
+
+function openAiSettingsModal() {
+  renderAiSettings();
+  aiSettingsOverlay.classList.add("open");
+}
+function closeAiSettingsModal() {
+  aiSettingsOverlay.classList.remove("open");
+}
+document.getElementById("openAiSettings").addEventListener("click", openAiSettingsModal);
+document.getElementById("closeAiSettings").addEventListener("click", closeAiSettingsModal);
+document.getElementById("closeAiSettings2").addEventListener("click", closeAiSettingsModal);
+aiSettingsOverlay.addEventListener("click", (e) => {
+  if (e.target === aiSettingsOverlay) closeAiSettingsModal();
+});
+
+async function renderAiSettings() {
+  const body = document.getElementById("aiSettingsBody");
+  body.innerHTML = '<div style="color:var(--text-low); font-size:12px;">Loading…</div>';
+  let providers;
+  try {
+    providers = await api("/ai-providers");
+  } catch (err) {
+    body.innerHTML = `<div style="color:var(--error); font-size:12px;">Could not load provider status: ${escapeHtml(err.message)}</div>`;
+    return;
+  }
+
+  body.innerHTML = "";
+  providers.forEach((p) => {
+    const row = document.createElement("div");
+    row.className = "provider-row";
+    row.innerHTML = `
+  <div class="provider-row-head">
+    <span class="provider-status-dot${p.configured ? " configured" : ""}"></span>
+    <span class="provider-name">${escapeHtml(PROVIDER_LABELS[p.provider] || p.provider)}</span>
+    <span class="provider-status-text">${p.configured ? "Key saved" : "Not configured"}</span>
+  </div>
+  <div class="provider-row-body">
+    <input type="password" placeholder="${p.configured ? "Enter a new key to replace it" : "Paste API key"}" data-provider="${p.provider}">
+    <button class="btn btn-sm" data-action="save" data-provider="${p.provider}">Save</button>
+    <button class="btn btn-sm btn-ghost" data-action="remove" data-provider="${p.provider}" ${p.configured ? "" : "disabled"}>Remove</button>
+  </div>`;
+    body.appendChild(row);
+  });
+
+  body.querySelectorAll('[data-action="save"]').forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const provider = btn.dataset.provider;
+      const input = body.querySelector(`input[data-provider="${provider}"]`);
+      const apiKey = input.value.trim();
+      if (!apiKey) {
+        input.focus();
+        return;
+      }
+      btn.disabled = true;
+      try {
+        await api(`/ai-providers/${provider}`, { method: "PUT", body: JSON.stringify({ apiKey }) });
+        await renderAiSettings();
+        await loadLocalModels(); // no-op for cloud, but keeps things in sync if models change later
+      } catch (err) {
+        alert("Could not save key: " + err.message);
+        btn.disabled = false;
+      }
+    });
+  });
+  body.querySelectorAll('[data-action="remove"]').forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const provider = btn.dataset.provider;
+      if (!confirm(`Remove the saved ${PROVIDER_LABELS[provider] || provider} API key?`)) return;
+      btn.disabled = true;
+      try {
+        await api(`/ai-providers/${provider}`, { method: "DELETE" });
+        await renderAiSettings();
+      } catch (err) {
+        alert("Could not remove key: " + err.message);
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
+/* =========================================================================
+   CHAT MODEL PICKER — Cursor-style Cloud/Local selector. Cloud models
+   call their real provider API once a key is saved via the settings
+   gear (see AI PROVIDER KEYS MODAL above). Local lists whatever
+   .gguf/.bin files have been uploaded via the server, stored
+   in data/models and tracked in SQLite. Selecting "+ Upload a local
+   model…" opens a file picker and streams the file to the server.
    ========================================================================= */
 const CHAT_MODEL_KEY = "querybench.chatmodel.v1";
 
+function formatBytes(n) {
+  if (n === null || n === undefined) return "";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let v = n,
+    i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return `${v.toFixed(i > 0 && v < 10 ? 1 : 0)} ${units[i]}`;
+}
+
 function updateChatModelUi(value) {
-  const isLocal = value === "local";
+  const isLocal = value === "local" || value.startsWith("local:");
   document.getElementById("chatModelIcon").innerHTML = icon(isLocal ? "cpu" : "cloud", 12);
   document.getElementById("chatModelHint").textContent = isLocal
     ? "Runs locally (node-llama-cpp) — not wired up yet"
@@ -1762,7 +1714,69 @@ function getSelectedChatModelLabel() {
   return select.options[select.selectedIndex] ? select.options[select.selectedIndex].text : select.value;
 }
 
-function initChatModelPicker() {
+async function loadLocalModels() {
+  const group = document.getElementById("localModelGroup");
+  try {
+    const models = await api("/models");
+    group.innerHTML = "";
+    if (models.length === 0) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.disabled = true;
+      opt.textContent = "No local models uploaded yet";
+      group.appendChild(opt);
+    } else {
+      models.forEach((m) => {
+        const opt = document.createElement("option");
+        opt.value = "local:" + m.id;
+        opt.textContent = `${m.name} (${formatBytes(m.sizeBytes)})`;
+        group.appendChild(opt);
+      });
+    }
+    const uploadOpt = document.createElement("option");
+    uploadOpt.value = "__upload_local__";
+    uploadOpt.textContent = "+ Upload a local model…";
+    group.appendChild(uploadOpt);
+  } catch (err) {
+    group.innerHTML = '<option value="" disabled>Could not load local models</option>';
+  }
+}
+
+async function uploadLocalModel(file) {
+  const hint = document.getElementById("chatModelHint");
+  hint.textContent = `Uploading ${file.name}…`;
+  const formData = new FormData();
+  formData.append("model", file);
+  formData.append("name", file.name.replace(/\.[^.]+$/, ""));
+  try {
+    // Not using the api() helper here — it always sets a JSON content
+    // type, which would break the multipart upload.
+    const res = await fetch("/api/models", { method: "POST", body: formData });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || `Upload failed (${res.status})`);
+    await loadLocalModels();
+    const select = document.getElementById("chatModelSelect");
+    select.value = "local:" + body.id;
+    try {
+      localStorage.setItem(CHAT_MODEL_KEY, select.value);
+    } catch (e) {
+      /* ignore */
+    }
+    updateChatModelUi(select.value);
+  } catch (err) {
+    alert("Could not upload model: " + err.message);
+    updateChatModelUi(document.getElementById("chatModelSelect").value);
+  }
+}
+
+document.getElementById("localModelFileInput").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (file) uploadLocalModel(file);
+});
+
+async function initChatModelPicker() {
+  await loadLocalModels();
   const select = document.getElementById("chatModelSelect");
   let saved = "claude-sonnet";
   try {
@@ -1773,6 +1787,19 @@ function initChatModelPicker() {
   if ([...select.options].some((o) => o.value === saved)) select.value = saved;
   updateChatModelUi(select.value);
   select.addEventListener("change", (e) => {
+    if (e.target.value === "__upload_local__") {
+      document.getElementById("localModelFileInput").click();
+      const fallback = (() => {
+        try {
+          return localStorage.getItem(CHAT_MODEL_KEY) || "claude-sonnet";
+        } catch (err) {
+          return "claude-sonnet";
+        }
+      })();
+      e.target.value = [...select.options].some((o) => o.value === fallback) ? fallback : "claude-sonnet";
+      updateChatModelUi(e.target.value);
+      return;
+    }
     try {
       localStorage.setItem(CHAT_MODEL_KEY, e.target.value);
     } catch (err) {
@@ -1828,20 +1855,6 @@ function expandToSessionTab(tab) {
 }
 
 function toggleLeftSidebar() {
-  const mobile = window.matchMedia("(max-width: 920px)").matches;
-
-  if (mobile) {
-    // On tablet/mobile the sidebar is an overlay. The collapse button
-    // should close the overlay completely, not leave a collapsed rail.
-    leftCollapsed = true;
-    document.getElementById("sidebarLeft").classList.add("collapsed");
-    document.querySelector(".workspace")?.classList.remove("mobile-panel-connections");
-    applyWorkspaceColumns();
-    updateSidebarToggleIcons();
-    persistUiPrefs();
-    return;
-  }
-
   leftCollapsed = !leftCollapsed;
   document.getElementById("sidebarLeft").classList.toggle("collapsed", leftCollapsed);
   applyWorkspaceColumns();
@@ -1851,20 +1864,6 @@ function toggleLeftSidebar() {
 }
 
 function toggleRightSidebar() {
-  const mobile = window.matchMedia("(max-width: 920px)").matches;
-
-  if (mobile) {
-    // On tablet/mobile the sidebar is an overlay. The collapse button
-    // should close the overlay completely.
-    rightCollapsed = true;
-    document.getElementById("sidebarRight").classList.add("collapsed");
-    document.querySelector(".workspace")?.classList.remove("mobile-panel-chat", "mobile-panel-history");
-    applyWorkspaceColumns();
-    updateSidebarToggleIcons();
-    persistUiPrefs();
-    return;
-  }
-
   rightCollapsed = !rightCollapsed;
   document.getElementById("sidebarRight").classList.toggle("collapsed", rightCollapsed);
   applyWorkspaceColumns();
@@ -1888,28 +1887,262 @@ document.getElementById("sessionRail").addEventListener("click", (e) => {
   expandToSessionTab(item.dataset.sessionTab);
 });
 
-function appendChatMessage(role, text) {
-  const list = document.getElementById("chatMessages");
-  const empty = list.querySelector(".chat-empty");
-  if (empty) empty.remove();
-  const el = document.createElement("div");
-  el.className = "chat-bubble chat-bubble-" + role;
-  el.textContent = text;
-  list.appendChild(el);
-  list.scrollTop = list.scrollHeight;
+// Each query tab owns its own list of chat conversations (tab.chatSessions)
+// plus which one is active (tab.activeChatSessionId, or null). Rendering
+// is a pure function of that state:
+//   no sessions yet          -> blank empty-state (current default look)
+//   sessions exist, none active -> list of past chats + "New chat"
+//   a session is active      -> that conversation's bubbles
+let chatSessionSeq = 0;
+
+function chatEmptyStateHtml() {
+  return `<div class="chat-empty">
+<div class="chat-empty-icon">${icon("sparkles", 22)}</div>
+<div class="chat-empty-title">Agent chat</div>
+<div class="chat-empty-copy">Ask about this query, schema, or results.</div>
+</div>`;
 }
 
-document.getElementById("chatComposer").addEventListener("submit", (e) => {
+function getActiveChatSession(tab) {
+  if (!tab || !tab.activeChatSessionId) return null;
+  return tab.chatSessions.find((s) => s.id === tab.activeChatSessionId) || null;
+}
+
+function renderChatBubbles(container, session) {
+  const visible = session.messages.filter((m) => m.role === "user" || m.role === "assistant");
+  if (visible.length === 0) {
+    container.innerHTML = chatEmptyStateHtml();
+    return;
+  }
+  container.innerHTML = visible
+    .map((m) => {
+      const cls =
+        "chat-bubble chat-bubble-" +
+        m.role +
+        (m.error ? " chat-bubble-error" : "") +
+        (m.pending ? " chat-bubble-pending" : "");
+      return `<div class="${cls}">${escapeHtml(m.content)}</div>`;
+    })
+    .join("");
+  container.scrollTop = container.scrollHeight;
+}
+
+function renderChatSessionsList(container, tab) {
+  const sorted = [...tab.chatSessions].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  container.innerHTML = sorted
+    .map((s) => {
+      const firstUser = s.messages.find((m) => m.role === "user");
+      const preview = firstUser ? firstUser.content.replace(/\s+/g, " ").trim() : "(empty chat)";
+      const count = s.messages.filter((m) => m.role === "user" || m.role === "assistant").length;
+      const when = new Date(s.updatedAt).toLocaleString([], {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      return `<div class="chat-session-item" data-session-id="${s.id}">
+  <div class="chat-session-item-top">
+    <span class="chat-session-item-title">${escapeHtml(s.title || preview.slice(0, 48) || "New chat")}</span>
+    <span class="chat-session-item-remove" data-role="remove" data-session-id="${s.id}" title="Delete this chat">${icon("x", 10)}</span>
+  </div>
+  <div class="chat-session-item-preview">${escapeHtml(preview)}</div>
+  <div class="chat-session-item-meta">${count} message${count === 1 ? "" : "s"} · ${when}</div>
+</div>`;
+    })
+    .join("");
+
+  container.querySelectorAll(".chat-session-item").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      if (e.target.closest('[data-role="remove"]')) return;
+      openChatSession(el.dataset.sessionId);
+    });
+  });
+  container.querySelectorAll('[data-role="remove"]').forEach((el) => {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteChatSession(el.dataset.sessionId);
+    });
+  });
+}
+
+function renderChatPane() {
+  const toolbar = document.getElementById("chatPaneToolbar");
+  const backBtn = document.getElementById("chatPaneBack");
+  const titleEl = document.getElementById("chatPaneTitle");
+  const container = document.getElementById("chatMessages");
+  const tab = getActiveTab();
+
+  if (!tab) {
+    toolbar.style.display = "none";
+    container.innerHTML = chatEmptyStateHtml();
+    return;
+  }
+
+  const session = getActiveChatSession(tab);
+
+  if (session) {
+    toolbar.style.display = "flex";
+    backBtn.style.display = "inline-flex";
+    titleEl.textContent = session.title || "New chat";
+    renderChatBubbles(container, session);
+    return;
+  }
+
+  if (tab.chatSessions.length === 0) {
+    toolbar.style.display = "none";
+    container.innerHTML = chatEmptyStateHtml();
+    return;
+  }
+
+  toolbar.style.display = "flex";
+  backBtn.style.display = "none";
+  titleEl.textContent = `${tab.chatSessions.length} previous chat${tab.chatSessions.length === 1 ? "" : "s"}`;
+  renderChatSessionsList(container, tab);
+}
+
+function openChatSession(id) {
+  const tab = getActiveTab();
+  if (!tab) return;
+  tab.activeChatSessionId = id;
+  renderChatPane();
+  persistSession();
+}
+
+function backToChatList() {
+  const tab = getActiveTab();
+  if (!tab) return;
+  tab.activeChatSessionId = null;
+  renderChatPane();
+  persistSession();
+}
+
+function startNewChatSession() {
+  const tab = getActiveTab();
+  if (!tab) return;
+  chatSessionSeq++;
+  const session = {
+    id: "chatsess" + chatSessionSeq,
+    title: null,
+    messages: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  tab.chatSessions.push(session);
+  tab.activeChatSessionId = session.id;
+  renderChatPane();
+  persistSession();
+  document.getElementById("chatInput").focus();
+}
+
+function deleteChatSession(id) {
+  const tab = getActiveTab();
+  if (!tab) return;
+  if (!confirm("Delete this chat? This cannot be undone.")) return;
+  tab.chatSessions = tab.chatSessions.filter((s) => s.id !== id);
+  if (tab.activeChatSessionId === id) tab.activeChatSessionId = null;
+  renderChatPane();
+  persistSession();
+}
+
+document.getElementById("chatPaneBack").addEventListener("click", backToChatList);
+document.getElementById("chatNewBtn").addEventListener("click", startNewChatSession);
+
+// Reflects, in the chat panel itself, exactly what will be attached if
+// the user sends a message right now — so the query context is visible
+// rather than a silent black box. Called whenever the active tab, its
+// query text, or its last result changes.
+function updateChatContextBar() {
+  const label = document.getElementById("chatContextLabel");
+  const tab = getActiveTab();
+  if (!tab || !tab.query || !tab.query.trim()) {
+    label.textContent = "No query tab open — nothing attached";
+    return;
+  }
+  const lines = tab.query.split("\n").length;
+  const conn = findConn(tab.connId);
+  const target = conn ? `${conn.name} / ${tab.dbName || "no database"}` : "no connection";
+  let resultNote = "";
+  if (tab.result) {
+    resultNote = tab.result.status === "success" ? ` · last run: ${tab.result.rowCount} rows` : " · last run: failed";
+  }
+  label.textContent = `Attached: "${tab.title}" (${lines} line${lines === 1 ? "" : "s"}, ${target})${resultNote}`;
+}
+
+// Builds the (not displayed in the thread) system message carrying the
+// live query editor contents, computed fresh at send time so it's
+// never stale even mid-conversation.
+function buildQueryContextMessage() {
+  const tab = getActiveTab();
+  if (!tab || !tab.query || !tab.query.trim()) return null;
+  const conn = findConn(tab.connId);
+  let content =
+    `You are helping the user inside Query Bench, a SQL query editor. ` +
+    `Current tab: "${tab.title}". ` +
+    `Target: ${conn ? `${conn.name} (${conn.type})` : "no connection selected"} / ${tab.dbName || "no database selected"}. ` +
+    `Current SQL in the editor:\n\`\`\`sql\n${tab.query}\n\`\`\``;
+  if (tab.result) {
+    content +=
+      tab.result.status === "success"
+        ? `\n\nThe query was last run successfully, returning ${tab.result.rowCount} rows with columns: ${tab.result.columns.join(", ")}.`
+        : `\n\nThe query was last run and failed with this error: ${tab.result.message}`;
+  }
+  return { role: "system", content };
+}
+
+document.getElementById("chatComposer").addEventListener("submit", async (e) => {
   e.preventDefault();
   const input = document.getElementById("chatInput");
   const text = input.value.trim();
   if (!text) return;
+  const tab = getActiveTab();
+  if (!tab) return;
   input.value = "";
-  appendChatMessage("user", text);
-  appendChatMessage(
-    "assistant",
-    `The AI agent isn't connected yet (model selected: ${getSelectedChatModelLabel()}). This panel is a preview — chat will work here once a backend is wired up.`,
-  );
+  input.style.height = "auto";
+
+  let session = getActiveChatSession(tab);
+  if (!session) {
+    chatSessionSeq++;
+    session = {
+      id: "chatsess" + chatSessionSeq,
+      title: null,
+      messages: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    tab.chatSessions.push(session);
+    tab.activeChatSessionId = session.id;
+  }
+  if (!session.title) session.title = text.slice(0, 48);
+
+  session.messages.push({ role: "user", content: text });
+  session.updatedAt = new Date().toISOString();
+  renderChatPane();
+
+  const model = document.getElementById("chatModelSelect").value;
+  const sendBtn = document.getElementById("chatSend");
+  sendBtn.disabled = true;
+
+  const pendingIndex = session.messages.push({ role: "assistant", content: "Thinking…", pending: true }) - 1;
+  renderChatPane();
+
+  const contextMessage = buildQueryContextMessage();
+  const outgoingHistory = session.messages.filter((m) => !m.pending).map((m) => ({ role: m.role, content: m.content }));
+  const outgoing = contextMessage ? [contextMessage, ...outgoingHistory] : outgoingHistory;
+
+  try {
+    const data = await api("/chat", {
+      method: "POST",
+      body: JSON.stringify({ model, messages: outgoing }),
+    });
+    session.messages[pendingIndex] = { role: "assistant", content: data.reply };
+  } catch (err) {
+    session.messages[pendingIndex] = { role: "assistant", content: err.message, error: true };
+  }
+  session.updatedAt = new Date().toISOString();
+  renderChatPane();
+  persistSession();
+  sendBtn.disabled = false;
+  input.focus();
 });
 
 document.getElementById("chatInput").addEventListener("keydown", (e) => {
@@ -2117,7 +2350,7 @@ async function init() {
   renderTabs();
   refreshWorkbench();
   updateSidebarToggleIcons();
-  initChatModelPicker();
+  await initChatModelPicker();
   restoreUiPrefs();
   await loadHistory();
 
@@ -2125,5 +2358,465 @@ async function init() {
     openModal();
   }
 }
+
+/* =========================================================================
+   RESPONSIVE UI LAYER
+   Keeps the latest template logic intact while adding the compact tablet/mobile UI.
+   ========================================================================= */
+function qbIsMobile() {
+  return window.matchMedia && window.matchMedia("(max-width: 920px)").matches;
+}
+
+function qbSvg(name, size) {
+  return typeof icon === "function" ? icon(name, size || 14) : "";
+}
+
+function qbCloseMenus(except) {
+  document.querySelectorAll(".qb-menu-host.open").forEach((el) => {
+    if (el !== except) el.classList.remove("open");
+  });
+  document.querySelectorAll(".custom-select-wrap.open").forEach((el) => {
+    if (!except || !el.contains(except)) {
+      el.classList.remove("open");
+      el.querySelector(".custom-select-trigger")?.setAttribute("aria-expanded", "false");
+    }
+  });
+}
+
+function qbCreateHeaderMenu() {
+  const topbar = document.querySelector(".topbar");
+  if (!topbar || document.getElementById("headerMore")) return;
+
+  const host = document.createElement("div");
+  host.className = "header-more qb-menu-host";
+  host.id = "headerMore";
+  host.innerHTML = `
+        <button class="header-more-btn" id="headerMoreBtn" type="button" aria-label="More options" aria-expanded="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"></circle><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"></circle><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"></circle></svg></button>
+        <div class="header-menu" id="headerMenu">
+            <span class="header-menu-label">Connection</span>
+            <div class="connection-select-wrap" id="mobileConnectionWrap">
+                <select class="connection-select" id="mobileConnectionSelect" aria-label="Connection"></select>
+            </div>
+            <span class="header-menu-label" style="margin-top:4px;">Theme</span>
+            <div class="theme-select-wrap" id="mobileThemeWrap">
+                <span class="theme-icon" id="mobileThemeIcon"></span>
+                <select class="theme-select" id="mobileThemeSelect" title="Color theme" aria-label="Color theme">
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                    <option value="system">System</option>
+                </select>
+            </div>
+        </div>`;
+  topbar.appendChild(host);
+
+  const btn = host.querySelector("#headerMoreBtn");
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const open = host.classList.toggle("open");
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) qbCloseMenus(host);
+  });
+}
+
+function qbSyncMobileHeaderSelects() {
+  const sourceConnection = document.getElementById("connectionSelect");
+  const mobileConnection = document.getElementById("mobileConnectionSelect");
+  if (sourceConnection && mobileConnection) {
+    const current = mobileConnection.value;
+    mobileConnection.innerHTML = sourceConnection.innerHTML;
+    mobileConnection.value = sourceConnection.value || current || "";
+  }
+
+  const sourceTheme = document.getElementById("themeSelect");
+  const mobileTheme = document.getElementById("mobileThemeSelect");
+  if (sourceTheme && mobileTheme) {
+    mobileTheme.value = sourceTheme.value;
+  }
+
+  const mobileThemeIcon = document.getElementById("mobileThemeIcon");
+  const themeIcon = document.getElementById("themeIcon");
+  if (mobileThemeIcon && themeIcon) mobileThemeIcon.innerHTML = themeIcon.innerHTML;
+}
+
+function qbBindMobileHeaderSelects() {
+  const sourceConnection = document.getElementById("connectionSelect");
+  const sourceTheme = document.getElementById("themeSelect");
+  const mobileConnection = document.getElementById("mobileConnectionSelect");
+  const mobileTheme = document.getElementById("mobileThemeSelect");
+  if (!mobileConnection || !mobileTheme) return;
+
+  qbSyncMobileHeaderSelects();
+
+  if (!mobileConnection.dataset.qbBound) {
+    mobileConnection.dataset.qbBound = "1";
+    mobileConnection.addEventListener("change", () => {
+      if (!sourceConnection) return;
+      sourceConnection.value = mobileConnection.value;
+      sourceConnection.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  }
+
+  if (!mobileTheme.dataset.qbBound) {
+    mobileTheme.dataset.qbBound = "1";
+    mobileTheme.addEventListener("change", () => {
+      if (!sourceTheme) return;
+      sourceTheme.value = mobileTheme.value;
+      sourceTheme.dispatchEvent(new Event("change", { bubbles: true }));
+      const iconEl = document.getElementById("mobileThemeIcon");
+      const sourceIcon = document.getElementById("themeIcon");
+      if (iconEl && sourceIcon) iconEl.innerHTML = sourceIcon.innerHTML;
+    });
+  }
+
+  sourceConnection?.addEventListener("change", qbSyncMobileHeaderSelects);
+  sourceTheme?.addEventListener("change", qbSyncMobileHeaderSelects);
+}
+
+function qbMenuButton(label, action, extraClass = "") {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = `toolbar-menu-item ${extraClass}`.trim();
+  btn.textContent = label;
+  btn.dataset.qbAction = action;
+  return btn;
+}
+
+function qbCreateToolbarMenu() {
+  const toolbar = document.querySelector(".toolbar");
+  if (!toolbar || document.getElementById("toolbarMore")) return;
+
+  const host = document.createElement("div");
+  host.className = "toolbar-more qb-menu-host";
+  host.id = "toolbarMore";
+  host.innerHTML = `
+        <button class="btn btn-sm btn-ghost toolbar-more-btn" id="toolbarMoreBtn" type="button" aria-label="More actions" aria-expanded="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"></circle><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"></circle><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"></circle></svg></button>
+        <div class="toolbar-menu" id="toolbarMenu">
+            <div class="toolbar-menu-label">Actions</div>
+        </div>`;
+  toolbar.appendChild(host);
+
+  const menu = host.querySelector("#toolbarMenu");
+  const items = [
+    ["Open .sql", "openFileBtn"],
+    ["Save .sql", "saveFileBtn"],
+    ["__divider__", ""],
+    ["Format", "formatBtn"],
+    ["Clear", "clearBtn"],
+    ["Run query", "runBtn"],
+  ];
+  items.forEach(([label, id]) => {
+    if (label === "__divider__") {
+      const d = document.createElement("div");
+      d.className = "toolbar-menu-divider";
+      menu.appendChild(d);
+      return;
+    }
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = `toolbar-menu-item${id === "runBtn" ? " toolbar-menu-run" : ""}`;
+    item.dataset.targetId = id;
+    item.textContent = label;
+    item.addEventListener("click", () => document.getElementById(id)?.click());
+    menu.appendChild(item);
+  });
+
+  const divider = document.createElement("div");
+  divider.className = "toolbar-menu-divider";
+  menu.appendChild(divider);
+
+  ["connections", "chat", "history"].forEach((panel) => {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "toolbar-menu-item";
+    item.dataset.panelAction = panel;
+    item.textContent = panel.charAt(0).toUpperCase() + panel.slice(1);
+    item.addEventListener("click", () => {
+      host.classList.remove("open");
+      document.getElementById("toolbarMoreBtn").setAttribute("aria-expanded", "false");
+      qbOpenMobilePanel(panel);
+    });
+    menu.appendChild(item);
+  });
+
+  const btn = host.querySelector("#toolbarMoreBtn");
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    qbCloseMenus(host);
+    const open = host.classList.toggle("open");
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+}
+
+function qbCreateResultsMenu() {
+  const toolbar = document.querySelector(".results-toolbar");
+  if (!toolbar || document.getElementById("resultsMore")) return;
+
+  const host = document.createElement("div");
+  host.className = "results-more qb-menu-host";
+  host.id = "resultsMore";
+  host.innerHTML = `
+        <button class="btn btn-sm results-more-btn" id="resultsMoreBtn" type="button" aria-label="Result actions" aria-expanded="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"></circle><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"></circle><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"></circle></svg></button>
+        <div class="results-menu" id="resultsMenu">
+            <div class="results-menu-label">Results</div>
+        </div>`;
+  toolbar.appendChild(host);
+  const menu = host.querySelector("#resultsMenu");
+
+  const add = (label, id) => {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "results-menu-item";
+    item.dataset.targetId = id;
+    item.textContent = label;
+    item.addEventListener("click", () => document.getElementById(id)?.click());
+    menu.appendChild(item);
+  };
+
+  add("Table", "viewTableBtn");
+  add("JSON", "viewJsonBtn");
+  const div1 = document.createElement("div");
+  div1.className = "results-menu-divider";
+  menu.appendChild(div1);
+  add("Copy", "copyResultBtn");
+  const div2 = document.createElement("div");
+  div2.className = "results-menu-divider";
+  menu.appendChild(div2);
+  add("Export CSV", "exportCsv");
+  add("Export JSON", "exportJson");
+
+  const btn = host.querySelector("#resultsMoreBtn");
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    qbCloseMenus(host);
+    ["copyResultBtn", "exportCsv", "exportJson"].forEach((id) => {
+      const source = document.getElementById(id);
+      const item = menu.querySelector(`[data-target-id="${id}"]`);
+      if (source && item) item.disabled = source.disabled;
+    });
+    const open = host.classList.toggle("open");
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+}
+
+function qbOpenMobilePanel(panel) {
+  const workspace = document.querySelector(".workspace");
+  if (!workspace || !qbIsMobile()) return;
+
+  workspace.classList.remove("mobile-panel-connections", "mobile-panel-chat", "mobile-panel-history");
+  document.getElementById("sidebarLeft")?.classList.remove("collapsed");
+  document.getElementById("sidebarRight")?.classList.remove("collapsed");
+
+  if (panel === "connections") {
+    workspace.classList.add("mobile-panel-connections");
+  } else if (panel === "chat" || panel === "history") {
+    if (typeof setSessionTab === "function") setSessionTab(panel);
+    workspace.classList.add(`mobile-panel-${panel}`);
+  }
+
+  if (typeof updateSidebarToggleIcons === "function") updateSidebarToggleIcons();
+}
+
+function qbCloseMobilePanels() {
+  const workspace = document.querySelector(".workspace");
+  if (!workspace) return;
+  workspace.classList.remove("mobile-panel-connections", "mobile-panel-chat", "mobile-panel-history");
+  document.getElementById("sidebarLeft")?.classList.add("collapsed");
+  document.getElementById("sidebarRight")?.classList.add("collapsed");
+}
+
+function qbPatchPanelCollapseButtons() {
+  document.getElementById("toggleLeftSidebar")?.addEventListener("click", () => {
+    if (qbIsMobile()) {
+      qbCloseMobilePanels();
+      return;
+    }
+  });
+  document.getElementById("toggleRightSidebar")?.addEventListener("click", () => {
+    if (qbIsMobile()) {
+      qbCloseMobilePanels();
+      return;
+    }
+  });
+}
+
+function qbInitCustomSelects() {
+  document.querySelectorAll("select").forEach((select) => {
+    if (select.dataset.qbCustomReady === "1") return;
+    select.dataset.qbCustomReady = "1";
+
+    const parent = select.parentElement;
+    if (!parent) return;
+    const wrap = document.createElement("div");
+    wrap.className = `${parent.className || ""} custom-select-wrap`.trim();
+
+    // Preserve existing siblings such as theme/model icons.
+    const preservedChildren = Array.from(parent.childNodes).filter((node) => node !== select);
+    parent.replaceWith(wrap);
+    preservedChildren.forEach((node) => wrap.appendChild(node));
+    wrap.appendChild(select);
+
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "custom-select-trigger";
+    trigger.setAttribute("aria-haspopup", "listbox");
+    trigger.setAttribute("aria-expanded", "false");
+    if (select.id) trigger.id = `${select.id}CustomTrigger`;
+
+    const value = document.createElement("span");
+    value.className = "custom-select-value";
+    const label = document.createElement("span");
+    label.className = "custom-select-label";
+    value.appendChild(label);
+    const chevron = document.createElement("span");
+    chevron.className = "custom-select-chevron";
+    chevron.innerHTML = qbSvg("chevronDown", 14) || "⌄";
+    trigger.append(value, chevron);
+
+    const menu = document.createElement("div");
+    menu.className = "custom-select-menu";
+    menu.setAttribute("role", "listbox");
+    wrap.append(trigger, menu);
+    select.classList.add("custom-select-native");
+
+    const selectedText = () => {
+      const opt = select.options[select.selectedIndex];
+      return opt ? opt.textContent : "";
+    };
+
+    const update = () => {
+      label.textContent = selectedText() || "Select…";
+      menu.querySelectorAll(".custom-select-option").forEach((item) => {
+        const selected = item.dataset.value === select.value;
+        item.classList.toggle("is-selected", selected);
+        item.setAttribute("aria-selected", selected ? "true" : "false");
+      });
+    };
+
+    const render = () => {
+      const current = select.value;
+      menu.innerHTML = "";
+      const appendOption = (option) => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "custom-select-option";
+        item.setAttribute("role", "option");
+        item.dataset.value = option.value;
+        item.disabled = option.disabled;
+        item.innerHTML = `<span class="custom-select-check">${qbSvg("check", 14) || "✓"}</span><span class="custom-select-option-label"></span>`;
+        item.querySelector(".custom-select-option-label").textContent = option.textContent;
+        item.classList.toggle("is-selected", option.value === current);
+        item.addEventListener("click", () => {
+          if (option.disabled) return;
+          select.value = option.value;
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+          close();
+        });
+        menu.appendChild(item);
+      };
+
+      Array.from(select.children).forEach((child) => {
+        if (child.tagName === "OPTGROUP") {
+          const g = document.createElement("div");
+          g.className = "custom-select-group-label";
+          g.textContent = child.label;
+          menu.appendChild(g);
+          Array.from(child.children).forEach(appendOption);
+        } else if (child.tagName === "OPTION") {
+          appendOption(child);
+        }
+      });
+      update();
+    };
+
+    const position = () => {
+      const rect = trigger.getBoundingClientRect();
+      menu.style.minWidth = `${Math.max(rect.width, 150)}px`;
+      const mr = menu.getBoundingClientRect();
+      let left = rect.left;
+      let top = rect.bottom + 6;
+      if (left + mr.width > innerWidth - 8) left = innerWidth - mr.width - 8;
+      if (top + mr.height > innerHeight - 8 && rect.top - mr.height - 6 >= 8) top = rect.top - mr.height - 6;
+      menu.style.left = `${Math.max(8, left)}px`;
+      menu.style.top = `${Math.max(8, top)}px`;
+    };
+
+    const close = () => {
+      wrap.classList.remove("open");
+      trigger.setAttribute("aria-expanded", "false");
+    };
+    const open = () => {
+      document.querySelectorAll(".custom-select-wrap.open").forEach((w) => {
+        if (w !== wrap) {
+          w.classList.remove("open");
+          w.querySelector(".custom-select-trigger")?.setAttribute("aria-expanded", "false");
+        }
+      });
+      render();
+      wrap.classList.add("open");
+      trigger.setAttribute("aria-expanded", "true");
+      requestAnimationFrame(position);
+    };
+
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      wrap.classList.contains("open") ? close() : open();
+    });
+    trigger.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        open();
+      }
+      if (e.key === "Escape") close();
+    });
+    select.addEventListener("change", update);
+    const observer = new MutationObserver(render);
+    observer.observe(select, { childList: true, subtree: true });
+    window.addEventListener("resize", () => wrap.classList.contains("open") && position());
+    window.addEventListener("scroll", () => wrap.classList.contains("open") && position(), true);
+    render();
+  });
+}
+
+function qbSetupResponsiveUI() {
+  qbCreateHeaderMenu();
+  qbCreateToolbarMenu();
+  qbCreateResultsMenu();
+  qbBindMobileHeaderSelects();
+  qbPatchPanelCollapseButtons();
+  qbInitCustomSelects();
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".qb-menu-host")) {
+      document.querySelectorAll(".qb-menu-host.open").forEach((el) => el.classList.remove("open"));
+    }
+    if (!e.target.closest(".custom-select-wrap")) {
+      document.querySelectorAll(".custom-select-wrap.open").forEach((el) => {
+        el.classList.remove("open");
+        el.querySelector(".custom-select-trigger")?.setAttribute("aria-expanded", "false");
+      });
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      document.querySelectorAll(".qb-menu-host.open").forEach((el) => el.classList.remove("open"));
+      document.querySelectorAll(".custom-select-wrap.open").forEach((el) => {
+        el.classList.remove("open");
+        el.querySelector(".custom-select-trigger")?.setAttribute("aria-expanded", "false");
+      });
+      if (qbIsMobile()) qbCloseMobilePanels();
+    }
+  });
+
+  window.addEventListener("resize", () => {
+    if (!qbIsMobile()) {
+      qbCloseMobilePanels();
+      if (typeof applyWorkspaceColumns === "function") applyWorkspaceColumns();
+    }
+  });
+}
+
 initTheme();
-init();
+init()
+  .then(() => qbSetupResponsiveUI())
+  .catch(() => qbSetupResponsiveUI());
