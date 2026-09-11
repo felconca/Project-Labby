@@ -1,13 +1,13 @@
-const path = require("path");
-const fs = require("fs");
-const Database = require("better-sqlite3");
+const path = require('path');
+const fs = require('fs');
+const Database = require('better-sqlite3');
 
-const dbFile = process.env.DB_FILE || "./data/query-bench.sqlite";
+const dbFile = process.env.DB_FILE || './data/query-bench.sqlite';
 const resolvedPath = path.resolve(process.cwd(), dbFile);
 fs.mkdirSync(path.dirname(resolvedPath), { recursive: true });
 
 const db = new Database(resolvedPath);
-db.pragma("journal_mode = WAL");
+db.pragma('journal_mode = WAL');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS connections (
@@ -45,6 +45,12 @@ db.exec(`
     file_path TEXT NOT NULL,
     size_bytes INTEGER,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS ai_providers (
+    provider TEXT PRIMARY KEY CHECK (provider IN ('anthropic', 'openai', 'xai')),
+    api_key_encrypted TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 `);
 

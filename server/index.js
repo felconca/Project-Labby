@@ -8,6 +8,8 @@ const connectionsRouter = require("./routes/connections");
 const queryRouter = require("./routes/query");
 const historyRouter = require("./routes/history");
 const modelsRouter = require("./routes/models");
+const chatRouter = require("./routes/chat");
+const aiProvidersRouter = require("./routes/aiProviders");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -18,6 +20,8 @@ app.use("/api/connections", connectionsRouter);
 app.use("/api/query", queryRouter);
 app.use("/api/history", historyRouter);
 app.use("/api/models", modelsRouter);
+app.use("/api/chat", chatRouter);
+app.use("/api/ai-providers", aiProvidersRouter);
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 

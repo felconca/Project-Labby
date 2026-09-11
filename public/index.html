@@ -308,277 +308,6 @@
             flex: 1;
         }
 
-        .header-more {
-            position: relative;
-            display: none;
-        }
-
-        .header-more-btn {
-            width: 34px;
-            height: 34px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            background: var(--bg-surface-raised);
-            color: var(--text-mid);
-            cursor: pointer;
-        }
-
-        .header-more-btn:hover {
-            color: var(--text-hi);
-            border-color: #C3CAD5;
-        }
-
-        .header-menu {
-            position: absolute;
-            top: calc(100% + 7px);
-            right: 0;
-            z-index: 100;
-            min-width: 220px;
-            padding: 7px;
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            box-shadow: 0 10px 28px rgba(0, 0, 0, .12);
-            display: none;
-        }
-
-        .header-more.open .header-menu {
-            display: block;
-        }
-
-        .header-menu-label {
-            display: block;
-            padding: 6px 8px 4px;
-            color: var(--text-low);
-            font-size: 10px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: .05em;
-        }
-
-        .header-menu .connection-select-wrap,
-        .header-menu .theme-select-wrap {
-            display: flex;
-            width: 100%;
-            height: auto;
-            margin: 0;
-        }
-
-        .header-menu .connection-select,
-        .header-menu .theme-select {
-            width: 100%;
-            min-width: 0;
-        }
-
-
-        /* ---------- Custom dropdowns ---------- */
-        .custom-select-wrap {
-            position: relative;
-            display: inline-flex;
-            align-items: center;
-            min-width: 0;
-        }
-
-        .custom-select-native {
-            position: absolute !important;
-            width: 1px !important;
-            height: 1px !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
-            inset: auto !important;
-        }
-
-        .custom-select-trigger {
-            display: inline-flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            width: 100%;
-            min-width: 0;
-            min-height: 34px;
-            padding: 7px 9px 7px 10px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            background: var(--bg-surface-raised);
-            color: var(--text-mid);
-            font: 500 12.5px var(--font-ui);
-            cursor: pointer;
-            text-align: left;
-            transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
-        }
-
-        .custom-select-trigger:hover {
-            color: var(--text-hi);
-            border-color: #C3CAD5;
-        }
-
-        .custom-select-trigger:focus-visible {
-            outline: 2px solid var(--accent);
-            outline-offset: 1px;
-        }
-
-
-        .custom-select-wrap::before,
-        .custom-select-wrap::after {
-            content: none !important;
-        }
-
-        .theme-select-wrap.custom-select-wrap .custom-select-trigger {
-            padding-left: 30px;
-        }
-
-        .custom-select-wrap.open .custom-select-trigger {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 2px var(--accent-soft);
-            color: var(--text-hi);
-        }
-
-        .custom-select-value {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            min-width: 0;
-            overflow: hidden;
-        }
-
-        .custom-select-label {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .custom-select-chevron {
-            flex-shrink: 0;
-            color: var(--text-low);
-            width: 14px;
-            height: 14px;
-            transition: transform 120ms ease;
-        }
-
-        .custom-select-wrap.open .custom-select-chevron {
-            transform: rotate(180deg);
-        }
-
-        .custom-select-menu {
-            position: fixed;
-            z-index: 1000;
-            min-width: 190px;
-            max-width: min(320px, calc(100vw - 16px));
-            max-height: min(320px, calc(100vh - 20px));
-            overflow-y: auto;
-            padding: 5px;
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            box-shadow: 0 14px 32px rgba(0, 0, 0, .14);
-            display: none;
-        }
-
-        .custom-select-wrap.open .custom-select-menu {
-            display: block;
-        }
-
-        .custom-select-option {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            width: 100%;
-            min-height: 32px;
-            padding: 7px 8px;
-            border: 0;
-            border-radius: 6px;
-            background: transparent;
-            color: var(--text-mid);
-            font: 400 12px var(--font-ui);
-            text-align: left;
-            cursor: pointer;
-        }
-
-        .custom-select-option:hover,
-        .custom-select-option.is-highlighted {
-            background: var(--bg-surface-raised);
-            color: var(--text-hi);
-        }
-
-        .custom-select-option.is-selected {
-            background: var(--accent-soft);
-            color: var(--text-hi);
-        }
-
-        .custom-select-check {
-            width: 14px;
-            height: 14px;
-            flex-shrink: 0;
-            color: var(--accent);
-            opacity: 0;
-        }
-
-        .custom-select-option.is-selected .custom-select-check {
-            opacity: 1;
-        }
-
-        .custom-select-option-label {
-            min-width: 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .custom-select-group-label {
-            padding: 7px 8px 4px;
-            color: var(--text-low);
-            font-size: 10px;
-            font-weight: 600;
-            letter-spacing: .04em;
-            text-transform: uppercase;
-        }
-
-        .connection-select-wrap.custom-select-wrap .custom-select-trigger {
-            font-family: var(--font-code);
-        }
-
-        .connection-select-wrap.custom-select-wrap .custom-select-trigger .custom-select-value::before {
-            content: '';
-            width: 7px;
-            height: 7px;
-            flex-shrink: 0;
-            border-radius: 50%;
-            background: var(--success);
-        }
-
-        .theme-select-wrap.custom-select-wrap .custom-select-trigger {
-            padding-left: 9px;
-        }
-
-        .chat-model-select-wrap.custom-select-wrap {
-            width: min(230px, 100%);
-        }
-
-        .chat-model-select-wrap.custom-select-wrap .custom-select-trigger {
-            min-height: 32px;
-            padding-top: 6px;
-            padding-bottom: 6px;
-            font-size: 11.5px;
-        }
-
-        .header-menu .custom-select-wrap,
-        .header-menu .custom-select-trigger {
-            width: 100%;
-        }
-
-        .header-menu .custom-select-trigger {
-            background: var(--bg-surface-raised);
-        }
-
-        @media (max-width: 600px) {
-            .custom-select-menu {
-                max-width: calc(100vw - 12px);
-            }
-        }
-
         .btn {
             display: inline-flex;
             align-items: center;
@@ -1120,122 +849,6 @@
             color: var(--text-mid);
         }
 
-        .toolbar-more {
-            display: none;
-            position: relative;
-            flex-shrink: 0;
-        }
-
-        .toolbar-more-btn {
-            width: 34px;
-            height: 32px;
-            padding: 0;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .toolbar-menu {
-            position: absolute;
-            top: calc(100% + 6px);
-            right: 0;
-            z-index: 50;
-            min-width: 170px;
-            padding: 5px;
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            box-shadow: 0 12px 30px rgba(27, 31, 39, 0.16);
-            display: none;
-        }
-
-        .toolbar-more.open .toolbar-menu {
-            display: block;
-        }
-
-        .toolbar-menu-label {
-            padding: 5px 8px 6px;
-            color: var(--text-low);
-            font-size: 10px;
-            font-weight: 600;
-            letter-spacing: .3px;
-            text-transform: uppercase;
-        }
-
-        .toolbar-menu-item {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            border: 0;
-            background: transparent;
-            color: var(--text-hi);
-            border-radius: var(--radius-sm);
-            padding: 8px 9px;
-            text-align: left;
-            font: inherit;
-            cursor: pointer;
-        }
-
-        .toolbar-menu-item:hover {
-            background: var(--bg-surface-raised);
-        }
-
-        .toolbar-menu-item:disabled {
-            opacity: .45;
-            cursor: not-allowed;
-        }
-
-        .toolbar-menu-divider {
-            height: 1px;
-            background: var(--border);
-            margin: 4px 3px;
-        }
-
-        .toolbar-menu-run {
-            color: #FFFFFF;
-            background: var(--accent);
-            margin-top: 4px;
-        }
-
-        .toolbar-menu-run:hover {
-            color: #FFFFFF;
-            background: var(--accent-hi);
-        }
-
-        @media (max-width: 920px) {
-            .toolbar {
-                gap: 8px;
-                padding: 8px 10px;
-            }
-
-            .toolbar .target {
-                min-width: 0;
-                max-width: calc(100% - 42px);
-            }
-
-            .toolbar .target b {
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-            }
-
-            .toolbar>#openFileBtn,
-            .toolbar>#saveFileBtn,
-            .toolbar>#formatBtn,
-            .toolbar>#clearBtn,
-            .toolbar>.kbd-hint,
-            .toolbar>#runBtn,
-            .toolbar>span[style*="width:1px"] {
-                display: none;
-            }
-
-            .toolbar-more {
-                display: block;
-                margin-left: auto;
-            }
-        }
-
-
         /* editor */
         .editor-shell {
             position: relative;
@@ -1437,77 +1050,6 @@
             padding: 8px 14px;
             border-bottom: 1px solid var(--border);
             flex-shrink: 0;
-        }
-
-        .results-more {
-            display: none;
-            position: relative;
-            flex-shrink: 0;
-        }
-
-        .results-more-btn {
-            width: 34px;
-            height: 32px;
-            padding: 0;
-            justify-content: center;
-        }
-
-        .results-menu {
-            position: absolute;
-            top: calc(100% + 6px);
-            right: 0;
-            z-index: 50;
-            min-width: 170px;
-            padding: 5px;
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            box-shadow: 0 12px 30px rgba(27, 31, 39, 0.16);
-            display: none;
-        }
-
-        .results-more.open .results-menu {
-            display: block;
-        }
-
-        .results-menu-label {
-            padding: 5px 8px 6px;
-            color: var(--text-low);
-            font-size: 10px;
-            font-weight: 600;
-            letter-spacing: 0.3px;
-            text-transform: uppercase;
-        }
-
-        .results-menu-item {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            border: 0;
-            background: transparent;
-            color: var(--text-hi);
-            border-radius: var(--radius-sm);
-            padding: 8px 9px;
-            text-align: left;
-            font: inherit;
-            font-size: 12px;
-            cursor: pointer;
-        }
-
-        .results-menu-item:hover {
-            background: var(--bg-surface-raised);
-        }
-
-        .results-menu-item:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-        }
-
-        .results-menu-divider {
-            height: 1px;
-            background: var(--border);
-            margin: 4px 3px;
         }
 
         .view-toggle {
@@ -1890,6 +1432,113 @@
             gap: 8px;
         }
 
+        .chat-pane-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 10px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .chat-pane-back {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            border-radius: 5px;
+            color: var(--text-low);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .chat-pane-back:hover {
+            background: var(--bg-surface-raised);
+            color: var(--text-hi);
+        }
+
+        .chat-pane-title {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: var(--text-mid);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .chat-pane-spacer {
+            flex: 1;
+        }
+
+        .chat-session-item {
+            padding: 9px 10px;
+            border-radius: var(--radius-md);
+            border: 1px solid transparent;
+            cursor: pointer;
+            margin: 6px 8px;
+        }
+
+        .chat-session-item:hover {
+            background: var(--bg-surface-raised);
+            border-color: var(--border);
+        }
+
+        .chat-session-item-top {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .chat-session-item-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-hi);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+        }
+
+        .chat-session-item-remove {
+            flex-shrink: 0;
+            padding: 1px 5px;
+            border-radius: 3px;
+            color: var(--text-low);
+            font-size: 10.5px;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .chat-session-item:hover .chat-session-item-remove {
+            opacity: 1;
+        }
+
+        .chat-session-item-remove:hover {
+            color: var(--error);
+            background: var(--error-soft);
+        }
+
+        .chat-session-item-preview {
+            font-size: 11.5px;
+            color: var(--text-mid);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-top: 3px;
+        }
+
+        .chat-session-item-meta {
+            font-size: 10.5px;
+            color: var(--text-low);
+            margin-top: 3px;
+        }
+
+        .chat-bubble-assistant.chat-bubble-pending {
+            color: var(--text-low);
+            font-style: italic;
+        }
+
         .chat-empty {
             margin: auto;
             text-align: center;
@@ -1938,6 +1587,12 @@
             color: var(--text-mid);
             border: 1px solid var(--border-soft);
             border-bottom-left-radius: 4px;
+        }
+
+        .chat-bubble-assistant.chat-bubble-error {
+            background: var(--error-soft);
+            color: var(--error);
+            border-color: rgba(220, 38, 38, 0.25);
         }
 
         .chat-model-bar {
@@ -2008,6 +1663,29 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+
+        .chat-context-bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-top: 1px solid var(--border);
+            color: var(--text-low);
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+
+        .chat-context-icon {
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .chat-context-label {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .chat-composer {
@@ -2171,6 +1849,70 @@
             gap: 8px;
         }
 
+        .provider-row {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--border-soft);
+        }
+
+        .provider-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .provider-row-head {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .provider-name {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--text-hi);
+        }
+
+        .provider-status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--text-low);
+            flex-shrink: 0;
+        }
+
+        .provider-status-dot.configured {
+            background: var(--success);
+        }
+
+        .provider-status-text {
+            font-size: 11px;
+            color: var(--text-low);
+            margin-left: auto;
+        }
+
+        .provider-row-body {
+            display: flex;
+            gap: 6px;
+        }
+
+        .provider-row-body input {
+            flex: 1;
+            background: var(--bg-sunken);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 7px 9px;
+            color: var(--text-hi);
+            font-size: 12px;
+            font-family: var(--font-code);
+        }
+
+        .provider-row-body input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
         ::-webkit-scrollbar {
             width: 10px;
             height: 10px;
@@ -2189,6 +1931,486 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #AEB6C4;
         }
+
+        @media (max-width: 920px) {
+            .workspace {
+                grid-template-columns: 1fr;
+                grid-auto-rows: minmax(0, 1fr);
+            }
+
+            .sidebar-left,
+            .sidebar-right {
+                display: none;
+            }
+        }
+
+        /* ---------- Custom dropdowns ---------- */
+        .custom-select-wrap {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            min-width: 0;
+        }
+
+        .custom-select-native {
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            inset: auto !important;
+        }
+
+        .custom-select-trigger {
+            display: inline-flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            width: 100%;
+            min-width: 0;
+            min-height: 34px;
+            padding: 7px 9px 7px 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--bg-surface-raised);
+            color: var(--text-mid);
+            font: 500 12.5px var(--font-ui);
+            cursor: pointer;
+            text-align: left;
+            transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+        }
+
+        .custom-select-trigger:hover {
+            color: var(--text-hi);
+            border-color: #C3CAD5;
+        }
+
+        .custom-select-trigger:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 1px;
+        }
+
+
+        .custom-select-wrap::before,
+        .custom-select-wrap::after {
+            content: none !important;
+        }
+
+        .theme-select-wrap.custom-select-wrap .custom-select-trigger {
+            padding-left: 30px;
+        }
+
+        .custom-select-wrap.open .custom-select-trigger {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-soft);
+            color: var(--text-hi);
+        }
+
+        .custom-select-value {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .custom-select-label {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .custom-select-chevron {
+            flex-shrink: 0;
+            color: var(--text-low);
+            width: 14px;
+            height: 14px;
+            transition: transform 120ms ease;
+        }
+
+        .custom-select-wrap.open .custom-select-chevron {
+            transform: rotate(180deg);
+        }
+
+        .custom-select-menu {
+            position: fixed;
+            z-index: 1000;
+            min-width: 190px;
+            max-width: min(320px, calc(100vw - 16px));
+            max-height: min(320px, calc(100vh - 20px));
+            overflow-y: auto;
+            padding: 5px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 14px 32px rgba(0, 0, 0, .14);
+            display: none;
+        }
+
+        .custom-select-wrap.open .custom-select-menu {
+            display: block;
+        }
+
+        .custom-select-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            min-height: 32px;
+            padding: 7px 8px;
+            border: 0;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--text-mid);
+            font: 400 12px var(--font-ui);
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .custom-select-option:hover,
+        .custom-select-option.is-highlighted {
+            background: var(--bg-surface-raised);
+            color: var(--text-hi);
+        }
+
+        .custom-select-option.is-selected {
+            background: var(--accent-soft);
+            color: var(--text-hi);
+        }
+
+        .custom-select-check {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+            color: var(--accent);
+            opacity: 0;
+        }
+
+        .custom-select-option.is-selected .custom-select-check {
+            opacity: 1;
+        }
+
+        .custom-select-option-label {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .custom-select-group-label {
+            padding: 7px 8px 4px;
+            color: var(--text-low);
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+        }
+
+        .connection-select-wrap.custom-select-wrap .custom-select-trigger {
+            font-family: var(--font-code);
+        }
+
+        .connection-select-wrap.custom-select-wrap .custom-select-trigger .custom-select-value::before {
+            content: '';
+            width: 7px;
+            height: 7px;
+            flex-shrink: 0;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
+        .theme-select-wrap.custom-select-wrap .custom-select-trigger {
+            padding-left: 30px;
+        }
+
+        .chat-model-select-wrap.custom-select-wrap {
+            width: min(230px, 100%);
+        }
+
+        .chat-model-select-wrap.custom-select-wrap .custom-select-trigger {
+            min-height: 32px;
+            padding: 6px 9px 6px 28px;
+            font-size: 11.5px;
+        }
+
+        .header-menu .custom-select-wrap,
+        .header-menu .custom-select-trigger {
+            width: 100%;
+        }
+
+        .header-menu .custom-select-trigger {
+            background: var(--bg-surface-raised);
+        }
+
+        @media (max-width: 600px) {
+            .custom-select-menu {
+                max-width: calc(100vw - 12px);
+            }
+        }
+
+
+        /* ---------- Compact header menu ---------- */
+        .header-more {
+            display: none;
+            position: relative;
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+
+        .header-more-btn {
+            width: 34px;
+            height: 32px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--bg-surface-raised);
+            color: var(--text-mid);
+            cursor: pointer;
+        }
+
+        .header-more-btn:hover {
+            color: var(--text-hi);
+            border-color: #C3CAD5;
+            background: var(--bg-surface-raised);
+        }
+
+        .header-more.open .header-more-btn {
+            color: var(--text-hi);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-soft);
+        }
+
+        .header-menu {
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            z-index: 80;
+            width: min(280px, calc(100vw - 16px));
+            padding: 7px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 14px 32px rgba(0, 0, 0, .14);
+            display: none;
+        }
+
+        .header-more.open .header-menu {
+            display: block;
+        }
+
+        .header-menu-label {
+            display: block;
+            padding: 5px 7px 6px;
+            color: var(--text-low);
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+        }
+
+        .header-menu .custom-select-wrap {
+            display: flex;
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        .header-menu .custom-select-trigger {
+            width: 100%;
+            min-height: 34px;
+        }
+
+
+        .toolbar-more {
+            display: none;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .toolbar-more-btn {
+            width: 34px;
+            height: 32px;
+            padding: 0;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .toolbar-menu {
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            z-index: 50;
+            min-width: 170px;
+            padding: 5px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: 0 12px 30px rgba(27, 31, 39, 0.16);
+            display: none;
+        }
+
+        .toolbar-more.open .toolbar-menu {
+            display: block;
+        }
+
+        .toolbar-menu-label {
+            padding: 5px 8px 6px;
+            color: var(--text-low);
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: .3px;
+            text-transform: uppercase;
+        }
+
+        .toolbar-menu-item {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 0;
+            background: transparent;
+            color: var(--text-hi);
+            border-radius: var(--radius-sm);
+            padding: 8px 9px;
+            text-align: left;
+            font: inherit;
+            cursor: pointer;
+        }
+
+        .toolbar-menu-item:hover {
+            background: var(--bg-surface-raised);
+        }
+
+        .toolbar-menu-item:disabled {
+            opacity: .45;
+            cursor: not-allowed;
+        }
+
+        .toolbar-menu-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 4px 3px;
+        }
+
+        .toolbar-menu-run {
+            color: #FFFFFF;
+            background: var(--accent);
+            margin-top: 4px;
+        }
+
+        .toolbar-menu-run:hover {
+            color: #FFFFFF;
+            background: var(--accent-hi);
+        }
+
+        @media (max-width: 920px) {
+            .toolbar {
+                gap: 8px;
+                padding: 8px 10px;
+            }
+
+            .toolbar .target {
+                min-width: 0;
+                max-width: calc(100% - 42px);
+            }
+
+            .toolbar .target b {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .toolbar>#openFileBtn,
+            .toolbar>#saveFileBtn,
+            .toolbar>#formatBtn,
+            .toolbar>#clearBtn,
+            .toolbar>.kbd-hint,
+            .toolbar>#runBtn,
+            .toolbar>span[style*="width:1px"] {
+                display: none;
+            }
+
+            .toolbar-more {
+                display: block;
+                margin-left: auto;
+            }
+        }
+
+
+
+        .results-more {
+            display: none;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .results-more-btn {
+            width: 34px;
+            height: 32px;
+            padding: 0;
+            justify-content: center;
+        }
+
+        .results-menu {
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            z-index: 50;
+            min-width: 170px;
+            padding: 5px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: 0 12px 30px rgba(27, 31, 39, 0.16);
+            display: none;
+        }
+
+        .results-more.open .results-menu {
+            display: block;
+        }
+
+        .results-menu-label {
+            padding: 5px 8px 6px;
+            color: var(--text-low);
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+
+        .results-menu-item {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 0;
+            background: transparent;
+            color: var(--text-hi);
+            border-radius: var(--radius-sm);
+            padding: 8px 9px;
+            text-align: left;
+            font: inherit;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .results-menu-item:hover {
+            background: var(--bg-surface-raised);
+        }
+
+        .results-menu-item:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .results-menu-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 4px 3px;
+        }
+
 
         @media (max-width: 920px) {
 
@@ -2516,26 +2738,6 @@
                     <option value="system">System</option>
                 </select>
             </div>
-            <div class="header-more" id="headerMore">
-                <button class="header-more-btn" id="headerMoreBtn" type="button" aria-label="More header options"
-                    aria-expanded="false">⋯</button>
-                <div class="header-menu" id="headerMenu">
-                    <span class="header-menu-label">Connection</span>
-                    <div class="connection-select-wrap">
-                        <select class="connection-select" id="mobileConnectionSelect" aria-label="Connection"></select>
-                    </div>
-                    <span class="header-menu-label" style="margin-top:4px;">Theme</span>
-                    <div class="theme-select-wrap">
-                        <span class="theme-icon" id="mobileThemeIcon"></span>
-                        <select class="theme-select" id="mobileThemeSelect" title="Color theme"
-                            aria-label="Color theme">
-                            <option value="light">Light</option>
-                            <option value="dark">Dark</option>
-                            <option value="system">System</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- ============ WORKSPACE ============ -->
@@ -2611,38 +2813,6 @@
                             viewBox="0 0 24 24" fill="currentColor" stroke="none">
                             <polygon points="6 3 20 12 6 21 6 3" />
                         </svg>Run query</button>
-                    <div class="toolbar-more" id="toolbarMore">
-                        <button class="btn btn-sm btn-ghost toolbar-more-btn" id="toolbarMoreBtn" type="button"
-                            aria-label="More actions" aria-expanded="false" title="More actions">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                <circle cx="5" cy="12" r="1.6" />
-                                <circle cx="12" cy="12" r="1.6" />
-                                <circle cx="19" cy="12" r="1.6" />
-                            </svg>
-                        </button>
-                        <div class="toolbar-menu" id="toolbarMenu">
-                            <div class="toolbar-menu-label">Actions</div>
-                            <button type="button" class="toolbar-menu-item" data-toolbar-action="openFileBtn"><span>Open
-                                    .sql</span></button>
-                            <button type="button" class="toolbar-menu-item" data-toolbar-action="saveFileBtn"><span>Save
-                                    .sql</span></button>
-                            <div class="toolbar-menu-divider"></div>
-                            <button type="button" class="toolbar-menu-item"
-                                data-toolbar-action="formatBtn"><span>Format</span></button>
-                            <button type="button" class="toolbar-menu-item"
-                                data-toolbar-action="clearBtn"><span>Clear</span></button>
-                            <button type="button" class="toolbar-menu-item toolbar-menu-run"
-                                data-toolbar-action="runBtn"><span>Run query</span></button>
-                            <div class="toolbar-menu-divider"></div>
-                            <div class="toolbar-menu-label">Panels</div>
-                            <button type="button" class="toolbar-menu-item"
-                                data-panel-action="connections"><span>Connections</span></button>
-                            <button type="button" class="toolbar-menu-item"
-                                data-panel-action="chat"><span>Chat</span></button>
-                            <button type="button" class="toolbar-menu-item"
-                                data-panel-action="history"><span>History</span></button>
-                        </div>
-                    </div>
                 </div>
 
                 <div class="editor-shell" id="editorShell">
@@ -2701,33 +2871,6 @@
                                 <path d="m7 10 5 5 5-5" />
                                 <path d="M20 21H4" />
                             </svg>Export JSON</button>
-                        <div class="results-more" id="resultsMore">
-                            <button class="btn btn-sm results-more-btn" id="resultsMoreBtn" type="button"
-                                aria-label="More result actions" aria-expanded="false">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2" stroke-linecap="round">
-                                    <circle cx="5" cy="12" r="1" />
-                                    <circle cx="12" cy="12" r="1" />
-                                    <circle cx="19" cy="12" r="1" />
-                                </svg>
-                            </button>
-                            <div class="results-menu" id="resultsMenu">
-                                <div class="results-menu-label">View</div>
-                                <button type="button" class="results-menu-item"
-                                    data-results-action="viewTableBtn">Table</button>
-                                <button type="button" class="results-menu-item"
-                                    data-results-action="viewJsonBtn">JSON</button>
-                                <div class="results-menu-divider"></div>
-                                <div class="results-menu-label">Actions</div>
-                                <button type="button" class="results-menu-item"
-                                    data-results-action="copyResultBtn"><span data-results-copy-label>Copy
-                                        CSV</span></button>
-                                <button type="button" class="results-menu-item" data-results-action="exportCsv">Export
-                                    CSV</button>
-                                <button type="button" class="results-menu-item" data-results-action="exportJson">Export
-                                    JSON</button>
-                            </div>
-                        </div>
                     </div>
                     <div class="results-body" id="resultsBody"></div>
                 </div>
@@ -2757,6 +2900,23 @@
                     </span>
                 </div>
                 <div class="session-pane" id="sessionPaneChat">
+                    <div class="chat-pane-toolbar" id="chatPaneToolbar" style="display:none;">
+                        <span class="chat-pane-back" id="chatPaneBack" title="Back to chat history">
+                            <svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="15 18 9 12 15 6" />
+                            </svg>
+                        </span>
+                        <span class="chat-pane-title" id="chatPaneTitle"></span>
+                        <span class="chat-pane-spacer"></span>
+                        <button type="button" class="btn btn-sm btn-ghost" id="chatNewBtn">
+                            <svg class="icon" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 5v14" />
+                                <path d="M5 12h14" />
+                            </svg>New chat
+                        </button>
+                    </div>
                     <div class="chat-messages" id="chatMessages">
                         <div class="chat-empty">
                             <div class="chat-empty-icon"><svg class="icon" width="22" height="22" viewBox="0 0 24 24"
@@ -2767,8 +2927,7 @@
                                     <path d="M19 13l.6 1.6L21.2 15l-1.6.6L19 17.2l-.6-1.6L16.8 15l1.6-.6Z" />
                                 </svg></div>
                             <div class="chat-empty-title">Agent chat</div>
-                            <div class="chat-empty-copy">Ask about this query, schema, or results. The agent is not
-                                connected yet.</div>
+                            <div class="chat-empty-copy">Ask about this query, schema, or results.</div>
                         </div>
                     </div>
                     <div class="chat-model-bar">
@@ -2787,7 +2946,25 @@
                             </select>
                         </div>
                         <span class="chat-model-hint" id="chatModelHint">Preview only — not connected</span>
+                        <span class="panel-toggle" id="openAiSettings" title="AI provider API keys">
+                            <svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="3" />
+                                <path
+                                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+                            </svg>
+                        </span>
                         <input type="file" id="localModelFileInput" accept=".gguf,.bin" style="display:none">
+                    </div>
+                    <div class="chat-context-bar" id="chatContextBar">
+                        <span class="chat-context-icon"><svg class="icon" width="12" height="12" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path
+                                    d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h4l2 3h8a2 2 0 0 1 2 2v2" />
+                            </svg></span>
+                        <span class="chat-context-label" id="chatContextLabel">No query tab open — nothing
+                            attached</span>
                     </div>
                     <form class="chat-composer" id="chatComposer">
                         <textarea id="chatInput" rows="1" placeholder="Ask the agent…"></textarea>
@@ -2883,6 +3060,27 @@
                         <path d="M17 21v-8H7v8" />
                         <path d="M7 3v5h8" />
                     </svg>Save connection</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ AI PROVIDER KEYS MODAL ============ -->
+    <div class="modal-overlay" id="aiSettingsOverlay">
+        <div class="modal">
+            <div class="modal-head">
+                AI provider keys
+                <span class="x" id="closeAiSettings"><svg class="icon" width="15" height="15" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M18 6 6 18" />
+                        <path d="m6 6 12 12" />
+                    </svg></span>
+            </div>
+            <div class="modal-body" id="aiSettingsBody">
+                <!-- one row per provider, rendered by JS -->
+            </div>
+            <div class="modal-foot">
+                <button class="btn btn-ghost" id="closeAiSettings2">Done</button>
             </div>
         </div>
     </div>
@@ -2986,6 +3184,8 @@
                 fileHandle: null,      // FileSystemFileHandle when saved/opened via the native picker (Chromium only)
                 boundFilename: null,   // filename this tab is linked to, so Save doesn't re-prompt
                 dirty: false,          // true when the query has changed since the last save to boundFilename
+                chatSessions: [],      // this tab's own chat conversations — separate from every other tab's
+                activeChatSessionId: null,
             };
         }
 
@@ -3003,6 +3203,8 @@
                 fileHandle: null,
                 boundFilename: null,
                 dirty: false,
+                chatSessions: [],
+                activeChatSessionId: null,
             };
         }
 
@@ -3030,6 +3232,8 @@
                     tabs: tabs.map(t => ({
                         id: t.id, title: t.title, connId: t.connId, dbName: t.dbName, query: t.query, view: t.view,
                         boundFilename: t.boundFilename || null,
+                        chatSessions: t.chatSessions || [],
+                        activeChatSessionId: t.activeChatSessionId || null,
                     })),
                 };
                 localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
@@ -3052,10 +3256,16 @@
                     id: t.id, title: t.title || 'Query', connId: t.connId || null, dbName: t.dbName || '',
                     query: t.query || '', result: null, view: t.view === 'json' ? 'json' : 'table', running: false,
                     fileHandle: null, boundFilename: t.boundFilename || null, dirty: false,
+                    chatSessions: Array.isArray(t.chatSessions) ? t.chatSessions : [],
+                    activeChatSessionId: t.activeChatSessionId || null,
                 }));
                 tabs.forEach(t => {
                     const m = /^tab(\d+)$/.exec(t.id);
                     if (m) tabSeq = Math.max(tabSeq, parseInt(m[1], 10));
+                    (t.chatSessions || []).forEach(s => {
+                        const sm = /^chatsess(\d+)$/.exec(s.id || '');
+                        if (sm) chatSessionSeq = Math.max(chatSessionSeq, parseInt(sm[1], 10));
+                    });
                 });
                 activeTabId = tabs.some(t => t.id === payload.activeTabId) ? payload.activeTabId : tabs[0].id;
                 return true;
@@ -3337,6 +3547,8 @@
         <div class="sub">Click "+" in the tab bar to start a new query, or pick a table from the sidebar.</div>
       </div>`;
                 highlightActiveTreeRow();
+                updateChatContextBar();
+                renderChatPane();
                 return;
             }
 
@@ -3348,6 +3560,8 @@
             select.value = conn ? conn.id : '';
             renderResults(tab);
             highlightActiveTreeRow();
+            updateChatContextBar();
+            renderChatPane();
         }
 
         /* =========================================================================
@@ -3457,6 +3671,7 @@
             }
             schedulePersist();
             updateAutocomplete();
+            updateChatContextBar();
         });
         codeInput.addEventListener('scroll', () => {
             highlightLayer.scrollTop = codeInput.scrollTop;
@@ -3921,7 +4136,10 @@
             }
             tab.running = false;
             renderTabs();
-            if (tab.id === activeTabId) renderResults(tab);
+            if (tab.id === activeTabId) {
+                renderResults(tab);
+                updateChatContextBar();
+            }
             loadHistory();
         }
 
@@ -3929,157 +4147,6 @@
             const tab = getActiveTab();
             if (tab) runQuery(tab, codeInput.value);
         });
-        /* Responsive header/menu controls */
-        const mobileConnectionSelect = document.getElementById('mobileConnectionSelect');
-        const mobileThemeSelect = document.getElementById('mobileThemeSelect');
-        const mobileThemeIcon = document.getElementById('mobileThemeIcon');
-        const headerMore = document.getElementById('headerMore');
-        const headerMoreBtn = document.getElementById('headerMoreBtn');
-        const connectionSelect = document.getElementById('connectionSelect');
-        const themeSelect = document.getElementById('themeSelect');
-
-        function syncMobileHeader() {
-            if (mobileConnectionSelect && connectionSelect) {
-                mobileConnectionSelect.innerHTML = connectionSelect.innerHTML;
-                mobileConnectionSelect.value = connectionSelect.value;
-            }
-            if (mobileThemeSelect && themeSelect) {
-                mobileThemeSelect.value = themeSelect.value;
-                if (mobileThemeIcon) {
-                    const themeIcon = document.getElementById('themeIcon');
-                    mobileThemeIcon.innerHTML = themeIcon ? themeIcon.innerHTML : '';
-                }
-            }
-        }
-
-        mobileConnectionSelect?.addEventListener('change', () => {
-            connectionSelect.value = mobileConnectionSelect.value;
-            connectionSelect.dispatchEvent(new Event('change', { bubbles: true }));
-        });
-
-        mobileThemeSelect?.addEventListener('change', () => {
-            themeSelect.value = mobileThemeSelect.value;
-            themeSelect.dispatchEvent(new Event('change', { bubbles: true }));
-            syncMobileHeader();
-        });
-
-        connectionSelect?.addEventListener('change', syncMobileHeader);
-        themeSelect?.addEventListener('change', syncMobileHeader);
-
-        headerMoreBtn?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const open = headerMore.classList.toggle('open');
-            headerMoreBtn.setAttribute('aria-expanded', String(open));
-            if (open) syncMobileHeader();
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!headerMore?.contains(e.target)) {
-                headerMore?.classList.remove('open');
-                headerMoreBtn?.setAttribute('aria-expanded', 'false');
-            }
-        });
-
-        const toolbarMore = document.getElementById('toolbarMore');
-        const toolbarMoreBtn = document.getElementById('toolbarMoreBtn');
-
-        toolbarMoreBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isOpen = toolbarMore.classList.toggle('open');
-            toolbarMoreBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-        });
-
-        document.querySelectorAll('[data-toolbar-action]').forEach(menuItem => {
-            menuItem.addEventListener('click', () => {
-                const target = document.getElementById(menuItem.dataset.toolbarAction);
-                if (target && !target.disabled) target.click();
-                toolbarMore.classList.remove('open');
-                toolbarMoreBtn.setAttribute('aria-expanded', 'false');
-            });
-        });
-
-        function showToolbarPanel(panel) {
-            const workspace = document.querySelector('.workspace');
-            const mobile = window.matchMedia('(max-width: 920px)').matches;
-            if (!workspace) return;
-
-            workspace.classList.remove('mobile-panel-connections', 'mobile-panel-chat', 'mobile-panel-history');
-
-            if (panel === 'connections') {
-                if (mobile) {
-                    leftCollapsed = false;
-                    document.getElementById('sidebarLeft')?.classList.remove('collapsed');
-                    workspace.classList.add('mobile-panel-connections');
-                } else if (leftCollapsed) {
-                    toggleLeftSidebar();
-                }
-            } else if (panel === 'chat' || panel === 'history') {
-                setSessionTab(panel);
-                if (mobile) {
-                    rightCollapsed = false;
-                    document.getElementById('sidebarRight')?.classList.remove('collapsed');
-                    workspace.classList.add(`mobile-panel-${panel}`);
-                } else if (rightCollapsed) {
-                    toggleRightSidebar();
-                }
-            }
-
-            applyWorkspaceColumns();
-            updateSidebarToggleIcons();
-            persistUiPrefs();
-        }
-
-        document.querySelectorAll('[data-panel-action]').forEach(menuItem => {
-            menuItem.addEventListener('click', () => {
-                showToolbarPanel(menuItem.dataset.panelAction);
-                toolbarMore.classList.remove('open');
-                toolbarMoreBtn.setAttribute('aria-expanded', 'false');
-            });
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!toolbarMore.contains(e.target)) {
-                toolbarMore.classList.remove('open');
-                toolbarMoreBtn.setAttribute('aria-expanded', 'false');
-            }
-        });
-
-        const resultsMore = document.getElementById('resultsMore');
-        const resultsMoreBtn = document.getElementById('resultsMoreBtn');
-
-        resultsMoreBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isOpen = resultsMore.classList.toggle('open');
-            resultsMoreBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-        });
-
-        document.querySelectorAll('[data-results-action]').forEach(menuItem => {
-            menuItem.addEventListener('click', () => {
-                const target = document.getElementById(menuItem.dataset.resultsAction);
-                if (target && !target.disabled) target.click();
-                resultsMore.classList.remove('open');
-                resultsMoreBtn.setAttribute('aria-expanded', 'false');
-            });
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!resultsMore.contains(e.target)) {
-                resultsMore.classList.remove('open');
-                resultsMoreBtn.setAttribute('aria-expanded', 'false');
-            }
-        });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key !== 'Escape') return;
-            headerMore?.classList.remove('open');
-            headerMoreBtn?.setAttribute('aria-expanded', 'false');
-            toolbarMore?.classList.remove('open');
-            toolbarMoreBtn?.setAttribute('aria-expanded', 'false');
-            resultsMore?.classList.remove('open');
-            resultsMoreBtn?.setAttribute('aria-expanded', 'false');
-            document.querySelector('.workspace')?.classList.remove('mobile-panel-connections', 'mobile-panel-chat', 'mobile-panel-history');
-        });
-
 
         function setStatus(kind, text) {
             const pill = document.getElementById('statusPill');
@@ -4099,8 +4166,6 @@
             document.getElementById('viewTableBtn').classList.toggle('is-active', tab.view === 'table');
             document.getElementById('viewJsonBtn').classList.toggle('is-active', tab.view === 'json');
             document.getElementById('copyResultLabel').textContent = tab.view === 'json' ? 'Copy JSON' : 'Copy CSV';
-            const resultMenuCopyLabel = document.querySelector('[data-results-copy-label]');
-            if (resultMenuCopyLabel) resultMenuCopyLabel.textContent = tab.view === 'json' ? 'Copy JSON' : 'Copy CSV';
 
             if (!tab.result) {
                 setStatus('idle', 'Not run yet');
@@ -4405,9 +4470,92 @@
         });
 
         /* =========================================================================
-           CHAT MODEL PICKER — Cursor-style Cloud/Local selector. Cloud entries
-           are still placeholders (no provider wired up), but Local now lists
-           whatever .gguf/.bin files have been uploaded via the server, stored
+           AI PROVIDER KEYS MODAL — save/remove encrypted API keys per provider.
+           Keys never round-trip back to the browser once saved; the modal only
+           ever shows a configured/not-configured status.
+           ========================================================================= */
+        const PROVIDER_LABELS = { anthropic: 'Anthropic (Claude)', openai: 'OpenAI (GPT)', xai: 'xAI (Grok)' };
+        const aiSettingsOverlay = document.getElementById('aiSettingsOverlay');
+
+        function openAiSettingsModal() {
+            renderAiSettings();
+            aiSettingsOverlay.classList.add('open');
+        }
+        function closeAiSettingsModal() {
+            aiSettingsOverlay.classList.remove('open');
+        }
+        document.getElementById('openAiSettings').addEventListener('click', openAiSettingsModal);
+        document.getElementById('closeAiSettings').addEventListener('click', closeAiSettingsModal);
+        document.getElementById('closeAiSettings2').addEventListener('click', closeAiSettingsModal);
+        aiSettingsOverlay.addEventListener('click', (e) => { if (e.target === aiSettingsOverlay) closeAiSettingsModal(); });
+
+        async function renderAiSettings() {
+            const body = document.getElementById('aiSettingsBody');
+            body.innerHTML = '<div style="color:var(--text-low); font-size:12px;">Loading…</div>';
+            let providers;
+            try {
+                providers = await api('/ai-providers');
+            } catch (err) {
+                body.innerHTML = `<div style="color:var(--error); font-size:12px;">Could not load provider status: ${escapeHtml(err.message)}</div>`;
+                return;
+            }
+
+            body.innerHTML = '';
+            providers.forEach(p => {
+                const row = document.createElement('div');
+                row.className = 'provider-row';
+                row.innerHTML = `
+          <div class="provider-row-head">
+            <span class="provider-status-dot${p.configured ? ' configured' : ''}"></span>
+            <span class="provider-name">${escapeHtml(PROVIDER_LABELS[p.provider] || p.provider)}</span>
+            <span class="provider-status-text">${p.configured ? 'Key saved' : 'Not configured'}</span>
+          </div>
+          <div class="provider-row-body">
+            <input type="password" placeholder="${p.configured ? 'Enter a new key to replace it' : 'Paste API key'}" data-provider="${p.provider}">
+            <button class="btn btn-sm" data-action="save" data-provider="${p.provider}">Save</button>
+            <button class="btn btn-sm btn-ghost" data-action="remove" data-provider="${p.provider}" ${p.configured ? '' : 'disabled'}>Remove</button>
+          </div>`;
+                body.appendChild(row);
+            });
+
+            body.querySelectorAll('[data-action="save"]').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const provider = btn.dataset.provider;
+                    const input = body.querySelector(`input[data-provider="${provider}"]`);
+                    const apiKey = input.value.trim();
+                    if (!apiKey) { input.focus(); return; }
+                    btn.disabled = true;
+                    try {
+                        await api(`/ai-providers/${provider}`, { method: 'PUT', body: JSON.stringify({ apiKey }) });
+                        await renderAiSettings();
+                        await loadLocalModels(); // no-op for cloud, but keeps things in sync if models change later
+                    } catch (err) {
+                        alert('Could not save key: ' + err.message);
+                        btn.disabled = false;
+                    }
+                });
+            });
+            body.querySelectorAll('[data-action="remove"]').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const provider = btn.dataset.provider;
+                    if (!confirm(`Remove the saved ${PROVIDER_LABELS[provider] || provider} API key?`)) return;
+                    btn.disabled = true;
+                    try {
+                        await api(`/ai-providers/${provider}`, { method: 'DELETE' });
+                        await renderAiSettings();
+                    } catch (err) {
+                        alert('Could not remove key: ' + err.message);
+                        btn.disabled = false;
+                    }
+                });
+            });
+        }
+
+        /* =========================================================================
+           CHAT MODEL PICKER — Cursor-style Cloud/Local selector. Cloud models
+           call their real provider API once a key is saved via the settings
+           gear (see AI PROVIDER KEYS MODAL above). Local lists whatever
+           .gguf/.bin files have been uploaded via the server, stored
            in data/models and tracked in SQLite. Selecting "+ Upload a local
            model…" opens a file picker and streams the file to the server.
            ========================================================================= */
@@ -4555,16 +4703,6 @@
         }
 
         function toggleLeftSidebar() {
-            const mobile = window.matchMedia('(max-width: 920px)').matches;
-            if (mobile) {
-                leftCollapsed = true;
-                document.getElementById('sidebarLeft').classList.add('collapsed');
-                document.querySelector('.workspace')?.classList.remove('mobile-panel-connections');
-                applyWorkspaceColumns();
-                updateSidebarToggleIcons();
-                persistUiPrefs();
-                return;
-            }
             leftCollapsed = !leftCollapsed;
             document.getElementById('sidebarLeft').classList.toggle('collapsed', leftCollapsed);
             applyWorkspaceColumns();
@@ -4574,16 +4712,6 @@
         }
 
         function toggleRightSidebar() {
-            const mobile = window.matchMedia('(max-width: 920px)').matches;
-            if (mobile) {
-                rightCollapsed = true;
-                document.getElementById('sidebarRight').classList.add('collapsed');
-                document.querySelector('.workspace')?.classList.remove('mobile-panel-chat', 'mobile-panel-history');
-                applyWorkspaceColumns();
-                updateSidebarToggleIcons();
-                persistUiPrefs();
-                return;
-            }
             rightCollapsed = !rightCollapsed;
             document.getElementById('sidebarRight').classList.toggle('collapsed', rightCollapsed);
             applyWorkspaceColumns();
@@ -4607,25 +4735,253 @@
             expandToSessionTab(item.dataset.sessionTab);
         });
 
-        function appendChatMessage(role, text) {
-            const list = document.getElementById('chatMessages');
-            const empty = list.querySelector('.chat-empty');
-            if (empty) empty.remove();
-            const el = document.createElement('div');
-            el.className = 'chat-bubble chat-bubble-' + role;
-            el.textContent = text;
-            list.appendChild(el);
-            list.scrollTop = list.scrollHeight;
+        // Each query tab owns its own list of chat conversations (tab.chatSessions)
+        // plus which one is active (tab.activeChatSessionId, or null). Rendering
+        // is a pure function of that state:
+        //   no sessions yet          -> blank empty-state (current default look)
+        //   sessions exist, none active -> list of past chats + "New chat"
+        //   a session is active      -> that conversation's bubbles
+        let chatSessionSeq = 0;
+
+        function chatEmptyStateHtml() {
+            return `<div class="chat-empty">
+        <div class="chat-empty-icon">${icon('sparkles', 22)}</div>
+        <div class="chat-empty-title">Agent chat</div>
+        <div class="chat-empty-copy">Ask about this query, schema, or results.</div>
+      </div>`;
         }
 
-        document.getElementById('chatComposer').addEventListener('submit', (e) => {
+        function getActiveChatSession(tab) {
+            if (!tab || !tab.activeChatSessionId) return null;
+            return tab.chatSessions.find(s => s.id === tab.activeChatSessionId) || null;
+        }
+
+        function renderChatBubbles(container, session) {
+            const visible = session.messages.filter(m => m.role === 'user' || m.role === 'assistant');
+            if (visible.length === 0) {
+                container.innerHTML = chatEmptyStateHtml();
+                return;
+            }
+            container.innerHTML = visible.map(m => {
+                const cls = 'chat-bubble chat-bubble-' + m.role
+                    + (m.error ? ' chat-bubble-error' : '')
+                    + (m.pending ? ' chat-bubble-pending' : '');
+                return `<div class="${cls}">${escapeHtml(m.content)}</div>`;
+            }).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function renderChatSessionsList(container, tab) {
+            const sorted = [...tab.chatSessions].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+            container.innerHTML = sorted.map(s => {
+                const firstUser = s.messages.find(m => m.role === 'user');
+                const preview = firstUser ? firstUser.content.replace(/\s+/g, ' ').trim() : '(empty chat)';
+                const count = s.messages.filter(m => m.role === 'user' || m.role === 'assistant').length;
+                const when = new Date(s.updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                return `<div class="chat-session-item" data-session-id="${s.id}">
+          <div class="chat-session-item-top">
+            <span class="chat-session-item-title">${escapeHtml(s.title || preview.slice(0, 48) || 'New chat')}</span>
+            <span class="chat-session-item-remove" data-role="remove" data-session-id="${s.id}" title="Delete this chat">${icon('x', 10)}</span>
+          </div>
+          <div class="chat-session-item-preview">${escapeHtml(preview)}</div>
+          <div class="chat-session-item-meta">${count} message${count === 1 ? '' : 's'} · ${when}</div>
+        </div>`;
+            }).join('');
+
+            container.querySelectorAll('.chat-session-item').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    if (e.target.closest('[data-role="remove"]')) return;
+                    openChatSession(el.dataset.sessionId);
+                });
+            });
+            container.querySelectorAll('[data-role="remove"]').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteChatSession(el.dataset.sessionId);
+                });
+            });
+        }
+
+        function renderChatPane() {
+            const toolbar = document.getElementById('chatPaneToolbar');
+            const backBtn = document.getElementById('chatPaneBack');
+            const titleEl = document.getElementById('chatPaneTitle');
+            const container = document.getElementById('chatMessages');
+            const tab = getActiveTab();
+
+            if (!tab) {
+                toolbar.style.display = 'none';
+                container.innerHTML = chatEmptyStateHtml();
+                return;
+            }
+
+            const session = getActiveChatSession(tab);
+
+            if (session) {
+                toolbar.style.display = 'flex';
+                backBtn.style.display = 'inline-flex';
+                titleEl.textContent = session.title || 'New chat';
+                renderChatBubbles(container, session);
+                return;
+            }
+
+            if (tab.chatSessions.length === 0) {
+                toolbar.style.display = 'none';
+                container.innerHTML = chatEmptyStateHtml();
+                return;
+            }
+
+            toolbar.style.display = 'flex';
+            backBtn.style.display = 'none';
+            titleEl.textContent = `${tab.chatSessions.length} previous chat${tab.chatSessions.length === 1 ? '' : 's'}`;
+            renderChatSessionsList(container, tab);
+        }
+
+        function openChatSession(id) {
+            const tab = getActiveTab();
+            if (!tab) return;
+            tab.activeChatSessionId = id;
+            renderChatPane();
+            persistSession();
+        }
+
+        function backToChatList() {
+            const tab = getActiveTab();
+            if (!tab) return;
+            tab.activeChatSessionId = null;
+            renderChatPane();
+            persistSession();
+        }
+
+        function startNewChatSession() {
+            const tab = getActiveTab();
+            if (!tab) return;
+            chatSessionSeq++;
+            const session = {
+                id: 'chatsess' + chatSessionSeq,
+                title: null,
+                messages: [],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+            };
+            tab.chatSessions.push(session);
+            tab.activeChatSessionId = session.id;
+            renderChatPane();
+            persistSession();
+            document.getElementById('chatInput').focus();
+        }
+
+        function deleteChatSession(id) {
+            const tab = getActiveTab();
+            if (!tab) return;
+            if (!confirm('Delete this chat? This cannot be undone.')) return;
+            tab.chatSessions = tab.chatSessions.filter(s => s.id !== id);
+            if (tab.activeChatSessionId === id) tab.activeChatSessionId = null;
+            renderChatPane();
+            persistSession();
+        }
+
+        document.getElementById('chatPaneBack').addEventListener('click', backToChatList);
+        document.getElementById('chatNewBtn').addEventListener('click', startNewChatSession);
+
+        // Reflects, in the chat panel itself, exactly what will be attached if
+        // the user sends a message right now — so the query context is visible
+        // rather than a silent black box. Called whenever the active tab, its
+        // query text, or its last result changes.
+        function updateChatContextBar() {
+            const label = document.getElementById('chatContextLabel');
+            const tab = getActiveTab();
+            if (!tab || !tab.query || !tab.query.trim()) {
+                label.textContent = 'No query tab open — nothing attached';
+                return;
+            }
+            const lines = tab.query.split('\n').length;
+            const conn = findConn(tab.connId);
+            const target = conn ? `${conn.name} / ${tab.dbName || 'no database'}` : 'no connection';
+            let resultNote = '';
+            if (tab.result) {
+                resultNote = tab.result.status === 'success'
+                    ? ` · last run: ${tab.result.rowCount} rows`
+                    : ' · last run: failed';
+            }
+            label.textContent = `Attached: "${tab.title}" (${lines} line${lines === 1 ? '' : 's'}, ${target})${resultNote}`;
+        }
+
+        // Builds the (not displayed in the thread) system message carrying the
+        // live query editor contents, computed fresh at send time so it's
+        // never stale even mid-conversation.
+        function buildQueryContextMessage() {
+            const tab = getActiveTab();
+            if (!tab || !tab.query || !tab.query.trim()) return null;
+            const conn = findConn(tab.connId);
+            let content = `You are helping the user inside Query Bench, a SQL query editor. ` +
+                `Current tab: "${tab.title}". ` +
+                `Target: ${conn ? `${conn.name} (${conn.type})` : 'no connection selected'} / ${tab.dbName || 'no database selected'}. ` +
+                `Current SQL in the editor:\n\`\`\`sql\n${tab.query}\n\`\`\``;
+            if (tab.result) {
+                content += tab.result.status === 'success'
+                    ? `\n\nThe query was last run successfully, returning ${tab.result.rowCount} rows with columns: ${tab.result.columns.join(', ')}.`
+                    : `\n\nThe query was last run and failed with this error: ${tab.result.message}`;
+            }
+            return { role: 'system', content };
+        }
+
+        document.getElementById('chatComposer').addEventListener('submit', async (e) => {
             e.preventDefault();
             const input = document.getElementById('chatInput');
             const text = input.value.trim();
             if (!text) return;
+            const tab = getActiveTab();
+            if (!tab) return;
             input.value = '';
-            appendChatMessage('user', text);
-            appendChatMessage('assistant', `The AI agent isn't connected yet (model selected: ${getSelectedChatModelLabel()}). This panel is a preview — chat will work here once a backend is wired up.`);
+            input.style.height = 'auto';
+
+            let session = getActiveChatSession(tab);
+            if (!session) {
+                chatSessionSeq++;
+                session = {
+                    id: 'chatsess' + chatSessionSeq,
+                    title: null,
+                    messages: [],
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                };
+                tab.chatSessions.push(session);
+                tab.activeChatSessionId = session.id;
+            }
+            if (!session.title) session.title = text.slice(0, 48);
+
+            session.messages.push({ role: 'user', content: text });
+            session.updatedAt = new Date().toISOString();
+            renderChatPane();
+
+            const model = document.getElementById('chatModelSelect').value;
+            const sendBtn = document.getElementById('chatSend');
+            sendBtn.disabled = true;
+
+            const pendingIndex = session.messages.push({ role: 'assistant', content: 'Thinking…', pending: true }) - 1;
+            renderChatPane();
+
+            const contextMessage = buildQueryContextMessage();
+            const outgoingHistory = session.messages
+                .filter(m => !m.pending)
+                .map(m => ({ role: m.role, content: m.content }));
+            const outgoing = contextMessage ? [contextMessage, ...outgoingHistory] : outgoingHistory;
+
+            try {
+                const data = await api('/chat', {
+                    method: 'POST',
+                    body: JSON.stringify({ model, messages: outgoing }),
+                });
+                session.messages[pendingIndex] = { role: 'assistant', content: data.reply };
+            } catch (err) {
+                session.messages[pendingIndex] = { role: 'assistant', content: err.message, error: true };
+            }
+            session.updatedAt = new Date().toISOString();
+            renderChatPane();
+            persistSession();
+            sendBtn.disabled = false;
+            input.focus();
         });
 
         document.getElementById('chatInput').addEventListener('keydown', (e) => {
@@ -4724,8 +5080,6 @@
             const iconName = pref === 'dark' ? 'moon' : pref === 'light' ? 'sun' : 'monitor';
             const iconEl = document.getElementById('themeIcon');
             if (iconEl) iconEl.innerHTML = icon(iconName, 13);
-            const mobileIconEl = document.getElementById('mobileThemeIcon');
-            if (mobileIconEl && iconEl) mobileIconEl.innerHTML = iconEl.innerHTML;
         }
 
         function setTheme(pref) {
@@ -4817,19 +5171,297 @@
             }
         }
 
+
         /* =========================================================================
-           CUSTOM SELECT UI
+           RESPONSIVE UI LAYER
+           Keeps the latest template logic intact while adding the compact tablet/mobile UI.
            ========================================================================= */
-        function initCustomSelects() {
-            const selects = document.querySelectorAll('select');
+        function qbIsMobile() {
+            return window.matchMedia && window.matchMedia('(max-width: 920px)').matches;
+        }
 
-            selects.forEach(select => {
-                if (select.dataset.customSelectReady === '1') return;
-                select.dataset.customSelectReady = '1';
+        function qbSvg(name, size) {
+            return typeof icon === 'function' ? icon(name, size || 14) : '';
+        }
 
+        function qbCloseMenus(except) {
+            document.querySelectorAll('.qb-menu-host.open').forEach(el => {
+                if (el !== except) el.classList.remove('open');
+            });
+            document.querySelectorAll('.custom-select-wrap.open').forEach(el => {
+                if (!except || !el.contains(except)) {
+                    el.classList.remove('open');
+                    el.querySelector('.custom-select-trigger')?.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
+
+        function qbCreateHeaderMenu() {
+            const topbar = document.querySelector('.topbar');
+            if (!topbar || document.getElementById('headerMore')) return;
+
+            const host = document.createElement('div');
+            host.className = 'header-more qb-menu-host';
+            host.id = 'headerMore';
+            host.innerHTML = `
+                <button class="header-more-btn" id="headerMoreBtn" type="button" aria-label="More options" aria-expanded="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"></circle><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"></circle><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"></circle></svg></button>
+                <div class="header-menu" id="headerMenu">
+                    <span class="header-menu-label">Connection</span>
+                    <div class="connection-select-wrap" id="mobileConnectionWrap">
+                        <select class="connection-select" id="mobileConnectionSelect" aria-label="Connection"></select>
+                    </div>
+                    <span class="header-menu-label" style="margin-top:4px;">Theme</span>
+                    <div class="theme-select-wrap" id="mobileThemeWrap">
+                        <span class="theme-icon" id="mobileThemeIcon"></span>
+                        <select class="theme-select" id="mobileThemeSelect" title="Color theme" aria-label="Color theme">
+                            <option value="light">Light</option>
+                            <option value="dark">Dark</option>
+                            <option value="system">System</option>
+                        </select>
+                    </div>
+                </div>`;
+            topbar.appendChild(host);
+
+            const btn = host.querySelector('#headerMoreBtn');
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const open = host.classList.toggle('open');
+                btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                if (open) qbCloseMenus(host);
+            });
+        }
+
+        function qbSyncMobileHeaderSelects() {
+            const sourceConnection = document.getElementById('connectionSelect');
+            const mobileConnection = document.getElementById('mobileConnectionSelect');
+            if (sourceConnection && mobileConnection) {
+                const current = mobileConnection.value;
+                mobileConnection.innerHTML = sourceConnection.innerHTML;
+                mobileConnection.value = sourceConnection.value || current || '';
+            }
+
+            const sourceTheme = document.getElementById('themeSelect');
+            const mobileTheme = document.getElementById('mobileThemeSelect');
+            if (sourceTheme && mobileTheme) {
+                mobileTheme.value = sourceTheme.value;
+            }
+
+            const mobileThemeIcon = document.getElementById('mobileThemeIcon');
+            const themeIcon = document.getElementById('themeIcon');
+            if (mobileThemeIcon && themeIcon) mobileThemeIcon.innerHTML = themeIcon.innerHTML;
+        }
+
+        function qbBindMobileHeaderSelects() {
+            const sourceConnection = document.getElementById('connectionSelect');
+            const sourceTheme = document.getElementById('themeSelect');
+            const mobileConnection = document.getElementById('mobileConnectionSelect');
+            const mobileTheme = document.getElementById('mobileThemeSelect');
+            if (!mobileConnection || !mobileTheme) return;
+
+            qbSyncMobileHeaderSelects();
+
+            if (!mobileConnection.dataset.qbBound) {
+                mobileConnection.dataset.qbBound = '1';
+                mobileConnection.addEventListener('change', () => {
+                    if (!sourceConnection) return;
+                    sourceConnection.value = mobileConnection.value;
+                    sourceConnection.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+            }
+
+            if (!mobileTheme.dataset.qbBound) {
+                mobileTheme.dataset.qbBound = '1';
+                mobileTheme.addEventListener('change', () => {
+                    if (!sourceTheme) return;
+                    sourceTheme.value = mobileTheme.value;
+                    sourceTheme.dispatchEvent(new Event('change', { bubbles: true }));
+                    const iconEl = document.getElementById('mobileThemeIcon');
+                    const sourceIcon = document.getElementById('themeIcon');
+                    if (iconEl && sourceIcon) iconEl.innerHTML = sourceIcon.innerHTML;
+                });
+            }
+
+            sourceConnection?.addEventListener('change', qbSyncMobileHeaderSelects);
+            sourceTheme?.addEventListener('change', qbSyncMobileHeaderSelects);
+        }
+
+        function qbMenuButton(label, action, extraClass = '') {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `toolbar-menu-item ${extraClass}`.trim();
+            btn.textContent = label;
+            btn.dataset.qbAction = action;
+            return btn;
+        }
+
+        function qbCreateToolbarMenu() {
+            const toolbar = document.querySelector('.toolbar');
+            if (!toolbar || document.getElementById('toolbarMore')) return;
+
+            const host = document.createElement('div');
+            host.className = 'toolbar-more qb-menu-host';
+            host.id = 'toolbarMore';
+            host.innerHTML = `
+                <button class="btn btn-sm btn-ghost toolbar-more-btn" id="toolbarMoreBtn" type="button" aria-label="More actions" aria-expanded="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"></circle><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"></circle><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"></circle></svg></button>
+                <div class="toolbar-menu" id="toolbarMenu">
+                    <div class="toolbar-menu-label">Actions</div>
+                </div>`;
+            toolbar.appendChild(host);
+
+            const menu = host.querySelector('#toolbarMenu');
+            const items = [
+                ['Open .sql', 'openFileBtn'],
+                ['Save .sql', 'saveFileBtn'],
+                ['__divider__', ''],
+                ['Format', 'formatBtn'],
+                ['Clear', 'clearBtn'],
+                ['Run query', 'runBtn'],
+            ];
+            items.forEach(([label, id]) => {
+                if (label === '__divider__') {
+                    const d = document.createElement('div');
+                    d.className = 'toolbar-menu-divider';
+                    menu.appendChild(d);
+                    return;
+                }
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = `toolbar-menu-item${id === 'runBtn' ? ' toolbar-menu-run' : ''}`;
+                item.dataset.targetId = id;
+                item.textContent = label;
+                item.addEventListener('click', () => document.getElementById(id)?.click());
+                menu.appendChild(item);
+            });
+
+            const divider = document.createElement('div');
+            divider.className = 'toolbar-menu-divider';
+            menu.appendChild(divider);
+
+            ['connections', 'chat', 'history'].forEach(panel => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'toolbar-menu-item';
+                item.dataset.panelAction = panel;
+                item.textContent = panel.charAt(0).toUpperCase() + panel.slice(1);
+                item.addEventListener('click', () => {
+                    host.classList.remove('open');
+                    document.getElementById('toolbarMoreBtn').setAttribute('aria-expanded', 'false');
+                    qbOpenMobilePanel(panel);
+                });
+                menu.appendChild(item);
+            });
+
+            const btn = host.querySelector('#toolbarMoreBtn');
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                qbCloseMenus(host);
+                const open = host.classList.toggle('open');
+                btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+        }
+
+        function qbCreateResultsMenu() {
+            const toolbar = document.querySelector('.results-toolbar');
+            if (!toolbar || document.getElementById('resultsMore')) return;
+
+            const host = document.createElement('div');
+            host.className = 'results-more qb-menu-host';
+            host.id = 'resultsMore';
+            host.innerHTML = `
+                <button class="btn btn-sm results-more-btn" id="resultsMoreBtn" type="button" aria-label="Result actions" aria-expanded="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"></circle><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"></circle><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"></circle></svg></button>
+                <div class="results-menu" id="resultsMenu">
+                    <div class="results-menu-label">Results</div>
+                </div>`;
+            toolbar.appendChild(host);
+            const menu = host.querySelector('#resultsMenu');
+
+            const add = (label, id) => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'results-menu-item';
+                item.dataset.targetId = id;
+                item.textContent = label;
+                item.addEventListener('click', () => document.getElementById(id)?.click());
+                menu.appendChild(item);
+            };
+
+            add('Table', 'viewTableBtn');
+            add('JSON', 'viewJsonBtn');
+            const div1 = document.createElement('div'); div1.className = 'results-menu-divider'; menu.appendChild(div1);
+            add('Copy', 'copyResultBtn');
+            const div2 = document.createElement('div'); div2.className = 'results-menu-divider'; menu.appendChild(div2);
+            add('Export CSV', 'exportCsv');
+            add('Export JSON', 'exportJson');
+
+            const btn = host.querySelector('#resultsMoreBtn');
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                qbCloseMenus(host);
+                ['copyResultBtn', 'exportCsv', 'exportJson'].forEach(id => {
+                    const source = document.getElementById(id);
+                    const item = menu.querySelector(`[data-target-id="${id}"]`);
+                    if (source && item) item.disabled = source.disabled;
+                });
+                const open = host.classList.toggle('open');
+                btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+        }
+
+        function qbOpenMobilePanel(panel) {
+            const workspace = document.querySelector('.workspace');
+            if (!workspace || !qbIsMobile()) return;
+
+            workspace.classList.remove('mobile-panel-connections', 'mobile-panel-chat', 'mobile-panel-history');
+            document.getElementById('sidebarLeft')?.classList.remove('collapsed');
+            document.getElementById('sidebarRight')?.classList.remove('collapsed');
+
+            if (panel === 'connections') {
+                workspace.classList.add('mobile-panel-connections');
+            } else if (panel === 'chat' || panel === 'history') {
+                if (typeof setSessionTab === 'function') setSessionTab(panel);
+                workspace.classList.add(`mobile-panel-${panel}`);
+            }
+
+            if (typeof updateSidebarToggleIcons === 'function') updateSidebarToggleIcons();
+        }
+
+        function qbCloseMobilePanels() {
+            const workspace = document.querySelector('.workspace');
+            if (!workspace) return;
+            workspace.classList.remove('mobile-panel-connections', 'mobile-panel-chat', 'mobile-panel-history');
+            document.getElementById('sidebarLeft')?.classList.add('collapsed');
+            document.getElementById('sidebarRight')?.classList.add('collapsed');
+        }
+
+        function qbPatchPanelCollapseButtons() {
+            document.getElementById('toggleLeftSidebar')?.addEventListener('click', () => {
+                if (qbIsMobile()) {
+                    qbCloseMobilePanels();
+                    return;
+                }
+            });
+            document.getElementById('toggleRightSidebar')?.addEventListener('click', () => {
+                if (qbIsMobile()) {
+                    qbCloseMobilePanels();
+                    return;
+                }
+            });
+        }
+
+        function qbInitCustomSelects() {
+            document.querySelectorAll('select').forEach(select => {
+                if (select.dataset.qbCustomReady === '1') return;
+                select.dataset.qbCustomReady = '1';
+
+                const parent = select.parentElement;
+                if (!parent) return;
                 const wrap = document.createElement('div');
-                wrap.className = `${select.parentElement?.className || ''} custom-select-wrap`.trim();
-                select.parentElement?.replaceWith(wrap);
+                wrap.className = `${parent.className || ''} custom-select-wrap`.trim();
+
+                // Preserve existing siblings such as theme/model icons.
+                const preservedChildren = Array.from(parent.childNodes).filter(node => node !== select);
+                parent.replaceWith(wrap);
+                preservedChildren.forEach(node => wrap.appendChild(node));
                 wrap.appendChild(select);
 
                 const trigger = document.createElement('button');
@@ -4844,167 +5476,152 @@
                 const label = document.createElement('span');
                 label.className = 'custom-select-label';
                 value.appendChild(label);
-
                 const chevron = document.createElement('span');
                 chevron.className = 'custom-select-chevron';
-                chevron.innerHTML = icon('chevronDown', 14);
-
+                chevron.innerHTML = qbSvg('chevronDown', 14) || '⌄';
                 trigger.append(value, chevron);
 
                 const menu = document.createElement('div');
                 menu.className = 'custom-select-menu';
                 menu.setAttribute('role', 'listbox');
-
                 wrap.append(trigger, menu);
                 select.classList.add('custom-select-native');
 
-                function selectedLabel() {
-                    const option = select.options[select.selectedIndex];
-                    return option ? option.textContent : '';
-                }
+                const selectedText = () => {
+                    const opt = select.options[select.selectedIndex];
+                    return opt ? opt.textContent : '';
+                };
 
-                function renderOptions() {
+                const update = () => {
+                    label.textContent = selectedText() || 'Select…';
+                    menu.querySelectorAll('.custom-select-option').forEach(item => {
+                        const selected = item.dataset.value === select.value;
+                        item.classList.toggle('is-selected', selected);
+                        item.setAttribute('aria-selected', selected ? 'true' : 'false');
+                    });
+                };
+
+                const render = () => {
                     const current = select.value;
                     menu.innerHTML = '';
-                    let currentGroup = null;
-
-                    Array.from(select.children).forEach(child => {
-                        if (child.tagName === 'OPTGROUP') {
-                            const groupLabel = document.createElement('div');
-                            groupLabel.className = 'custom-select-group-label';
-                            groupLabel.textContent = child.label;
-                            menu.appendChild(groupLabel);
-                            Array.from(child.children).forEach(option => appendOption(option));
-                        } else if (child.tagName === 'OPTION') {
-                            appendOption(child);
-                        }
-                    });
-
-                    updateValue();
-
-                    function appendOption(option) {
+                    const appendOption = option => {
                         const item = document.createElement('button');
                         item.type = 'button';
                         item.className = 'custom-select-option';
                         item.setAttribute('role', 'option');
                         item.dataset.value = option.value;
                         item.disabled = option.disabled;
-
-                        const check = document.createElement('span');
-                        check.className = 'custom-select-check';
-                        check.innerHTML = icon('check', 14);
-
-                        const text = document.createElement('span');
-                        text.className = 'custom-select-option-label';
-                        text.textContent = option.textContent;
-
-                        item.append(check, text);
+                        item.innerHTML = `<span class="custom-select-check">${qbSvg('check', 14) || '✓'}</span><span class="custom-select-option-label"></span>`;
+                        item.querySelector('.custom-select-option-label').textContent = option.textContent;
                         item.classList.toggle('is-selected', option.value === current);
-                        item.addEventListener('click', (e) => {
-                            e.preventDefault();
+                        item.addEventListener('click', () => {
                             if (option.disabled) return;
                             select.value = option.value;
                             select.dispatchEvent(new Event('change', { bubbles: true }));
                             close();
                         });
                         menu.appendChild(item);
-                    }
-                }
+                    };
 
-                function updateValue() {
-                    label.textContent = selectedLabel() || 'Select…';
-                    menu.querySelectorAll('.custom-select-option').forEach(item => {
-                        const selected = item.dataset.value === select.value;
-                        item.classList.toggle('is-selected', selected);
-                        item.setAttribute('aria-selected', selected ? 'true' : 'false');
+                    Array.from(select.children).forEach(child => {
+                        if (child.tagName === 'OPTGROUP') {
+                            const g = document.createElement('div');
+                            g.className = 'custom-select-group-label';
+                            g.textContent = child.label;
+                            menu.appendChild(g);
+                            Array.from(child.children).forEach(appendOption);
+                        } else if (child.tagName === 'OPTION') {
+                            appendOption(child);
+                        }
                     });
-                }
+                    update();
+                };
 
-                function positionMenu() {
+                const position = () => {
                     const rect = trigger.getBoundingClientRect();
-                    const menuWidth = Math.max(rect.width, Math.min(320, window.innerWidth - 16));
-                    menu.style.minWidth = `${rect.width}px`;
-                    menu.style.maxWidth = `${menuWidth}px`;
-
-                    const menuRect = menu.getBoundingClientRect();
+                    menu.style.minWidth = `${Math.max(rect.width, 150)}px`;
+                    const mr = menu.getBoundingClientRect();
                     let left = rect.left;
                     let top = rect.bottom + 6;
-
-                    if (left + menuRect.width > window.innerWidth - 8) {
-                        left = window.innerWidth - menuRect.width - 8;
-                    }
-                    if (top + menuRect.height > window.innerHeight - 8 && rect.top - menuRect.height - 6 >= 8) {
-                        top = rect.top - menuRect.height - 6;
-                    }
-
+                    if (left + mr.width > innerWidth - 8) left = innerWidth - mr.width - 8;
+                    if (top + mr.height > innerHeight - 8 && rect.top - mr.height - 6 >= 8) top = rect.top - mr.height - 6;
                     menu.style.left = `${Math.max(8, left)}px`;
                     menu.style.top = `${Math.max(8, top)}px`;
-                }
+                };
 
-                function open() {
-                    closeAllCustomSelects(wrap);
-                    renderOptions();
-                    wrap.classList.add('open');
-                    trigger.setAttribute('aria-expanded', 'true');
-                    requestAnimationFrame(positionMenu);
-                }
-
-                function close() {
+                const close = () => {
                     wrap.classList.remove('open');
                     trigger.setAttribute('aria-expanded', 'false');
-                }
+                };
+                const open = () => {
+                    document.querySelectorAll('.custom-select-wrap.open').forEach(w => {
+                        if (w !== wrap) { w.classList.remove('open'); w.querySelector('.custom-select-trigger')?.setAttribute('aria-expanded', 'false'); }
+                    });
+                    render();
+                    wrap.classList.add('open');
+                    trigger.setAttribute('aria-expanded', 'true');
+                    requestAnimationFrame(position);
+                };
 
-                trigger.addEventListener('click', (e) => {
+                trigger.addEventListener('click', e => {
                     e.stopPropagation();
-                    if (wrap.classList.contains('open')) close();
-                    else open();
+                    wrap.classList.contains('open') ? close() : open();
                 });
-
-                trigger.addEventListener('keydown', (e) => {
-                    if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        open();
-                    } else if (e.key === 'Escape') {
-                        close();
-                    }
+                trigger.addEventListener('keydown', e => {
+                    if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+                    if (e.key === 'Escape') close();
                 });
-
-                select.addEventListener('change', updateValue);
-
-                const observer = new MutationObserver(() => {
-                    renderOptions();
-                });
+                select.addEventListener('change', update);
+                const observer = new MutationObserver(render);
                 observer.observe(select, { childList: true, subtree: true });
-
-                window.addEventListener('resize', () => {
-                    if (wrap.classList.contains('open')) positionMenu();
-                });
-
-                window.addEventListener('scroll', () => {
-                    if (wrap.classList.contains('open')) positionMenu();
-                }, true);
-
-                renderOptions();
+                window.addEventListener('resize', () => wrap.classList.contains('open') && position());
+                window.addEventListener('scroll', () => wrap.classList.contains('open') && position(), true);
+                render();
             });
         }
 
-        function closeAllCustomSelects(except) {
-            document.querySelectorAll('.custom-select-wrap.open').forEach(wrap => {
-                if (wrap !== except) {
-                    wrap.classList.remove('open');
-                    wrap.querySelector('.custom-select-trigger')?.setAttribute('aria-expanded', 'false');
+        function qbSetupResponsiveUI() {
+            qbCreateHeaderMenu();
+            qbCreateToolbarMenu();
+            qbCreateResultsMenu();
+            qbBindMobileHeaderSelects();
+            qbPatchPanelCollapseButtons();
+            qbInitCustomSelects();
+
+            document.addEventListener('click', e => {
+                if (!e.target.closest('.qb-menu-host')) {
+                    document.querySelectorAll('.qb-menu-host.open').forEach(el => el.classList.remove('open'));
+                }
+                if (!e.target.closest('.custom-select-wrap')) {
+                    document.querySelectorAll('.custom-select-wrap.open').forEach(el => {
+                        el.classList.remove('open');
+                        el.querySelector('.custom-select-trigger')?.setAttribute('aria-expanded', 'false');
+                    });
+                }
+            });
+
+            document.addEventListener('keydown', e => {
+                if (e.key === 'Escape') {
+                    document.querySelectorAll('.qb-menu-host.open').forEach(el => el.classList.remove('open'));
+                    document.querySelectorAll('.custom-select-wrap.open').forEach(el => {
+                        el.classList.remove('open');
+                        el.querySelector('.custom-select-trigger')?.setAttribute('aria-expanded', 'false');
+                    });
+                    if (qbIsMobile()) qbCloseMobilePanels();
+                }
+            });
+
+            window.addEventListener('resize', () => {
+                if (!qbIsMobile()) {
+                    qbCloseMobilePanels();
+                    if (typeof applyWorkspaceColumns === 'function') applyWorkspaceColumns();
                 }
             });
         }
 
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.custom-select-wrap')) closeAllCustomSelects();
-        });
 
-
-        initCustomSelects();
         initTheme();
-        init();
+        init().then(() => qbSetupResponsiveUI()).catch(() => qbSetupResponsiveUI());
     </script>
 </body>
 

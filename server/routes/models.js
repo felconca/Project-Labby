@@ -4,6 +4,7 @@ const fs = require("fs");
 const crypto = require("crypto");
 const multer = require("multer");
 const db = require("../db");
+const aiProviderManager = require("../aiProviderManager");
 
 const router = express.Router();
 
@@ -87,6 +88,7 @@ router.delete("/:id", (req, res) => {
   if (!row) return res.status(404).json({ error: `No model with id "${req.params.id}"` });
   fs.unlink(row.file_path, () => {}); // file may already be gone — not fatal either way
   db.prepare("DELETE FROM local_models WHERE id = ?").run(req.params.id);
+  aiProviderManager.forgetLocalSession(row.id);
   res.json({ ok: true });
 });
 
