@@ -59,6 +59,16 @@
                     <span class="panel-title-text">CONNECTIONS</span>
                     <span class="panel-toggle" id="toggleLeftSidebar" title="Collapse"></span>
                 </div>
+                <div class="sidebar-search">
+                    <span class="sidebar-search-icon"><svg class="icon" width="12" height="12" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="7" />
+                            <path d="m21 21-4.3-4.3" />
+                        </svg></span>
+                    <input type="text" id="connectionSearchInput" class="sidebar-search-input"
+                        placeholder="Search connections…">
+                </div>
                 <div class="tree-scroll" id="connectionTree"></div>
                 <div class="connections-rail" id="connectionsRail"></div>
                 <div class="sidebar-footer">
@@ -134,6 +144,34 @@
                         <textarea class="code-input" id="codeInput" spellcheck="false" autocapitalize="off"
                             autocomplete="off"></textarea>
                         <div class="autocomplete-popup" id="autocompletePopup" style="display:none;"></div>
+                        <div class="find-bar editor-find-bar" id="editorFindBar" style="display:none;">
+                            <span class="find-bar-icon"><svg class="icon" width="12" height="12" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <circle cx="11" cy="11" r="7" />
+                                    <path d="m21 21-4.3-4.3" />
+                                </svg></span>
+                            <input type="text" id="editorFindInput" class="find-bar-input" placeholder="Find in query">
+                            <span class="find-bar-count" id="editorFindCount">0/0</span>
+                            <button type="button" class="find-bar-btn" id="editorFindPrev"
+                                title="Previous match (Shift+Enter)"><svg class="icon" width="12" height="12"
+                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="18 15 12 9 6 15" />
+                                </svg></button>
+                            <button type="button" class="find-bar-btn" id="editorFindNext"
+                                title="Next match (Enter)"><svg class="icon" width="12" height="12" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9" />
+                                </svg></button>
+                            <span class="find-bar-btn" id="editorFindClose" title="Close (Esc)"><svg class="icon"
+                                    width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18 6 6 18" />
+                                    <path d="m6 6 12 12" />
+                                </svg></span>
+                        </div>
                     </div>
                 </div>
 
@@ -181,6 +219,22 @@
                                 <path d="m7 10 5 5 5-5" />
                                 <path d="M20 21H4" />
                             </svg>Export JSON</button>
+                    </div>
+                    <div class="find-bar results-find-bar" id="resultsFindBar" style="display:none;">
+                        <span class="find-bar-icon"><svg class="icon" width="12" height="12" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="7" />
+                                <path d="m21 21-4.3-4.3" />
+                            </svg></span>
+                        <input type="text" id="resultsFindInput" class="find-bar-input" placeholder="Find in results">
+                        <span class="find-bar-count" id="resultsFindCount"></span>
+                        <span class="find-bar-btn" id="resultsFindClose" title="Close (Esc)"><svg class="icon"
+                                width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 6 6 18" />
+                                <path d="m6 6 12 12" />
+                            </svg></span>
                     </div>
                     <div class="results-body" id="resultsBody"></div>
                 </div>
@@ -288,6 +342,16 @@
                     </form>
                 </div>
                 <div class="session-pane" id="sessionPaneHistory">
+                    <div class="sidebar-search">
+                        <span class="sidebar-search-icon"><svg class="icon" width="12" height="12" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="7" />
+                                <path d="m21 21-4.3-4.3" />
+                            </svg></span>
+                        <input type="text" id="historySearchInput" class="sidebar-search-input"
+                            placeholder="Search history…">
+                    </div>
                     <div class="history-scroll" id="historyList"></div>
                 </div>
                 <div class="session-rail" id="sessionRail">

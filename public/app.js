@@ -355,6 +355,7 @@ function renderTree() {
           conn.databases = dbNames.map((name) => ({ name, tables: null }));
           renderDatabaseList(conn, dbInner);
           highlightActiveTreeRow();
+          applyConnectionSearch();
         } catch (err) {
           dbInner.innerHTML = `<div class="tree-empty" style="color:var(--error);">Could not load databases: ${escapeHtml(err.message)}</div>`;
         }
@@ -366,6 +367,7 @@ function renderTree() {
 
   highlightActiveTreeRow();
   renderConnectionsRail();
+  applyConnectionSearch();
 }
 
 function renderDatabaseList(conn, container) {
@@ -406,6 +408,7 @@ function renderDatabaseList(conn, container) {
           db.tables = tables;
           dbTablesCache.set(`${conn.id}::${db.name}`, tables);
           renderTableList(conn, db, tblInner);
+          applyConnectionSearch();
         } catch (err) {
           tblInner.innerHTML = `<div class="tree-empty" style="color:var(--error);">Could not load tables: ${escapeHtml(err.message)}</div>`;
         }
@@ -435,6 +438,73 @@ function renderTableList(conn, db, container) {
     container.appendChild(tRow);
   });
 }
+
+// Filters the connection tree by name as you type. Only searches whatever is
+// already loaded — a connection's databases/tables aren't fetched just to
+// support search, so an unexpanded branch can't be searched into (its parent
+// connection still matches by name, though). Matching branches auto-expand
+// so results are visible without extra clicks; clearing the box restores
+// everything.
+function applyConnectionSearch(queryOverride) {
+  const input = document.getElementById("connectionSearchInput");
+  const q = (queryOverride !== undefined ? queryOverride : input ? input.value : "").trim().toLowerCase();
+  const root = document.getElementById("connectionTree");
+  if (!root) return;
+
+  root.querySelectorAll(":scope > .conn-group").forEach((group) => {
+    const connRow = group.querySelector(":scope > .tree-row");
+    if (!connRow) return;
+    const connLabelEl = connRow.querySelector(".tree-label");
+    const connLabel = connLabelEl ? connLabelEl.textContent.toLowerCase() : "";
+    const connMatches = !q || connLabel.includes(q);
+
+    const dbWrap = group.querySelector(":scope > .tree-children");
+    const dbInner = dbWrap ? dbWrap.querySelector(":scope > .tree-children-inner") : null;
+    const dbBlocks = dbInner ? Array.from(dbInner.children).filter((el) => el.querySelector(":scope > .tree-row")) : [];
+    let anyDbVisible = false;
+
+    dbBlocks.forEach((dbBlock) => {
+      const dbRow = dbBlock.querySelector(":scope > .tree-row");
+      const dbLabelEl = dbRow.querySelector(".tree-label");
+      const dbLabel = dbLabelEl ? dbLabelEl.textContent.toLowerCase() : "";
+      const dbNameMatches = !q || connMatches || dbLabel.includes(q);
+
+      const tblWrap = dbBlock.querySelector(":scope > .tree-children");
+      const tblInner = tblWrap ? tblWrap.querySelector(":scope > .tree-children-inner") : null;
+      const tRows = tblInner ? Array.from(tblInner.querySelectorAll(":scope > .tree-row")) : [];
+      let anyTableVisible = false;
+
+      tRows.forEach((tRow) => {
+        const tLabelEl = tRow.querySelector(".tree-label");
+        const tLabel = tLabelEl ? tLabelEl.textContent.toLowerCase() : "";
+        const showTable = !q || dbNameMatches || tLabel.includes(q);
+        tRow.style.display = showTable ? "" : "none";
+        if (showTable) anyTableVisible = true;
+      });
+
+      const showDb = !q || dbNameMatches || anyTableVisible;
+      dbBlock.style.display = showDb ? "" : "none";
+      if (showDb) anyDbVisible = true;
+
+      if (q && !dbNameMatches && anyTableVisible && tblWrap) {
+        tblWrap.classList.add("open");
+        const toggle = dbRow.querySelector('[data-role="toggle"]');
+        if (toggle) toggle.classList.add("open");
+      }
+    });
+
+    const showConn = !q || connMatches || anyDbVisible;
+    group.style.display = showConn ? "" : "none";
+
+    if (q && !connMatches && anyDbVisible && dbWrap) {
+      dbWrap.classList.add("open");
+      const toggle = connRow.querySelector('[data-role="toggle"]');
+      if (toggle) toggle.classList.add("open");
+    }
+  });
+}
+
+document.getElementById("connectionSearchInput").addEventListener("input", () => applyConnectionSearch());
 
 async function removeConnection(connId) {
   if (!confirm("Remove this connection? Saved credentials will be deleted.")) return;
@@ -632,6 +702,25 @@ function escapeHtml(s) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+// Wraps every occurrence of `term` in <mark class="search-hit"> within an
+// already-built HTML string, without ever touching text inside a tag (so it
+// can safely run on top of syntax-highlighted or JSON-colored markup). A
+// match that spans across a tag boundary (e.g. straddling a <span>) won't be
+// found — an acceptable tradeoff for a lightweight highlighter that never
+// risks corrupting the HTML.
+function highlightSearchInHtml(html, term) {
+  if (!term) return html;
+  const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(escapedTerm, "gi");
+  return html
+    .split(/(<[^>]+>)/g)
+    .map((segment) => {
+      if (segment.startsWith("<")) return segment;
+      return segment.replace(re, (match) => `<mark class="search-hit">${match}</mark>`);
+    })
+    .join("");
+}
+
 function highlightSql(text) {
   let out = escapeHtml(text);
   out = out.replace(/(--[^\n]*)/g, '<span class="cmt">$1</span>');
@@ -644,7 +733,9 @@ function highlightSql(text) {
 }
 
 function refreshHighlight() {
-  highlightLayer.innerHTML = highlightSql(codeInput.value);
+  let html = highlightSql(codeInput.value);
+  if (editorFindTerm) html = highlightSearchInHtml(html, editorFindTerm);
+  highlightLayer.innerHTML = html;
 }
 
 function refreshGutter() {
@@ -1040,6 +1131,205 @@ function positionAutocomplete() {
 }
 
 /* =========================================================================
+   FIND / SEARCH — Ctrl+F opens a find bar scoped to whatever you're
+   currently focused in: the SQL editor, or the results panel (table row
+   filtering, or highlighting for JSON). The sidebar search boxes above
+   (connections, history) are always-visible and handled separately.
+   ========================================================================= */
+let editorFindTerm = "";
+let editorFindMatches = [];
+let editorFindIndex = -1;
+
+function computeEditorMatches(term) {
+  editorFindMatches = [];
+  if (!term) return;
+  const text = codeInput.value.toLowerCase();
+  const t = term.toLowerCase();
+  let idx = 0;
+  while ((idx = text.indexOf(t, idx)) !== -1) {
+    editorFindMatches.push([idx, idx + term.length]);
+    idx += term.length || 1;
+  }
+}
+
+function updateEditorFindDisplay() {
+  refreshHighlight();
+  document.getElementById("editorFindCount").textContent = editorFindMatches.length
+    ? `${editorFindIndex + 1}/${editorFindMatches.length}`
+    : "0/0";
+}
+
+function gotoEditorMatch(i) {
+  if (editorFindMatches.length === 0) return;
+  editorFindIndex = ((i % editorFindMatches.length) + editorFindMatches.length) % editorFindMatches.length;
+  const [start, end] = editorFindMatches[editorFindIndex];
+  codeInput.focus();
+  codeInput.setSelectionRange(start, end);
+  const before = codeInput.value.slice(0, start);
+  const line = before.split("\n").length - 1;
+  const target = line * LINE_HEIGHT - codeInput.clientHeight / 2;
+  codeInput.scrollTop = Math.max(0, target);
+  highlightLayer.scrollTop = codeInput.scrollTop;
+  gutter.scrollTop = codeInput.scrollTop;
+  updateEditorFindDisplay();
+}
+
+function openEditorFind() {
+  hideAutocomplete();
+  const bar = document.getElementById("editorFindBar");
+  bar.style.display = "flex";
+  const input = document.getElementById("editorFindInput");
+  const hadSelection = codeInput.selectionStart !== codeInput.selectionEnd;
+  if (hadSelection) input.value = codeInput.value.slice(codeInput.selectionStart, codeInput.selectionEnd);
+  editorFindTerm = input.value;
+  input.focus();
+  input.select();
+  computeEditorMatches(editorFindTerm);
+  editorFindIndex = editorFindMatches.length ? 0 : -1;
+  updateEditorFindDisplay();
+}
+
+function closeEditorFind() {
+  document.getElementById("editorFindBar").style.display = "none";
+  editorFindTerm = "";
+  editorFindMatches = [];
+  editorFindIndex = -1;
+  refreshHighlight();
+  codeInput.focus();
+}
+
+document.getElementById("editorFindInput").addEventListener("input", (e) => {
+  editorFindTerm = e.target.value;
+  computeEditorMatches(editorFindTerm);
+  editorFindIndex = editorFindMatches.length ? 0 : -1;
+  if (editorFindIndex === 0) gotoEditorMatch(0);
+  else updateEditorFindDisplay();
+});
+document.getElementById("editorFindInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    gotoEditorMatch(editorFindIndex + (e.shiftKey ? -1 : 1));
+  }
+  if (e.key === "Escape") {
+    e.preventDefault();
+    closeEditorFind();
+  }
+});
+document.getElementById("editorFindPrev").addEventListener("click", () => gotoEditorMatch(editorFindIndex - 1));
+document.getElementById("editorFindNext").addEventListener("click", () => gotoEditorMatch(editorFindIndex + 1));
+document.getElementById("editorFindClose").addEventListener("click", closeEditorFind);
+
+// Results find: row-filtering for the Table view, highlight-in-place for
+// the JSON view. A single term persists across view/tab switches so it
+// keeps applying — renderResults() calls this itself after every render.
+let resultsFindTerm = "";
+
+function isResultsFindOpen() {
+  const bar = document.getElementById("resultsFindBar");
+  return bar && bar.style.display !== "none";
+}
+
+function openResultsFind() {
+  const bar = document.getElementById("resultsFindBar");
+  bar.style.display = "flex";
+  const input = document.getElementById("resultsFindInput");
+  input.focus();
+  input.select();
+  applyResultsFind();
+}
+
+function closeResultsFind() {
+  document.getElementById("resultsFindBar").style.display = "none";
+  resultsFindTerm = "";
+  document.getElementById("resultsFindInput").value = "";
+  applyResultsFind();
+}
+
+function applyResultsFind() {
+  const countEl = document.getElementById("resultsFindCount");
+  const tab = getActiveTab();
+  if (!countEl) return;
+  if (!tab || !tab.result || tab.result.status !== "success") {
+    countEl.textContent = "";
+    return;
+  }
+  const term = resultsFindTerm.trim();
+
+  if (tab.view === "table") {
+    const rows = document.querySelectorAll("#resultsBody table.result-table tbody tr");
+    if (!term) {
+      rows.forEach((r) => (r.style.display = ""));
+      countEl.textContent = "";
+      return;
+    }
+    const q = term.toLowerCase();
+    let visible = 0;
+    rows.forEach((r) => {
+      const match = r.textContent.toLowerCase().includes(q);
+      r.style.display = match ? "" : "none";
+      if (match) visible++;
+    });
+    countEl.textContent = `${visible} of ${rows.length} rows`;
+  } else {
+    const pre = document.querySelector("#resultsBody .json-view");
+    if (!pre) {
+      countEl.textContent = "";
+      return;
+    }
+    if (!pre.dataset.baseHtml) pre.dataset.baseHtml = pre.innerHTML;
+    if (!term) {
+      pre.innerHTML = pre.dataset.baseHtml;
+      countEl.textContent = "";
+      return;
+    }
+    pre.innerHTML = highlightSearchInHtml(pre.dataset.baseHtml, term);
+    const matches = pre.querySelectorAll("mark.search-hit");
+    countEl.textContent = `${matches.length} match${matches.length === 1 ? "" : "es"}`;
+    if (matches.length) matches[0].scrollIntoView({ block: "center" });
+  }
+}
+
+document.getElementById("resultsFindInput").addEventListener("input", (e) => {
+  resultsFindTerm = e.target.value;
+  applyResultsFind();
+});
+document.getElementById("resultsFindInput").addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    e.preventDefault();
+    closeResultsFind();
+  }
+});
+document.getElementById("resultsFindClose").addEventListener("click", closeResultsFind);
+
+// Ctrl/Cmd+F: opens the editor find bar if the SQL editor is focused,
+// otherwise the results find bar (table filter / JSON highlight) — as long
+// as a query tab is actually open. Falls through to the browser's own find
+// when there's nothing to search, or when a sidebar search box is focused
+// (those own their own filtering already).
+document.addEventListener("keydown", (e) => {
+  const isFindShortcut = (e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F");
+  if (!isFindShortcut) return;
+  const active = document.activeElement;
+  if (active && (active.id === "connectionSearchInput" || active.id === "historySearchInput")) return;
+  const tab = getActiveTab();
+  if (!tab) return;
+  e.preventDefault();
+  if (active === codeInput) {
+    openEditorFind();
+  } else {
+    openResultsFind();
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  const ef = document.getElementById("editorFindBar");
+  const rf = document.getElementById("resultsFindBar");
+  if (ef && ef.style.display !== "none") closeEditorFind();
+  if (rf && rf.style.display !== "none") closeResultsFind();
+});
+
+/* =========================================================================
    OPEN / SAVE .sql FILES
    In Chromium browsers (secure context — HTTPS or localhost), this uses the
    File System Access API so Save writes directly back to the same file on
@@ -1268,6 +1558,7 @@ ${icon("inbox", 30)}
 <div class="title">No results yet</div>
 <div class="sub">Write a query and press Run, or pick a table on the left to preview it.</div>
 </div>`;
+    applyResultsFind();
     return;
   }
 
@@ -1277,6 +1568,7 @@ ${icon("inbox", 30)}
     exportCsvBtn.disabled = true;
     exportJsonBtn.disabled = true;
     body.innerHTML = `<div class="error-block"><div class="err-title">Query not executed</div>${escapeHtml(tab.result.message)}</div>`;
+    applyResultsFind();
     return;
   }
 
@@ -1291,6 +1583,7 @@ ${icon("inbox", 30)}
   } else {
     body.innerHTML = renderJsonHtml(tab.result.columns, tab.result.rows);
   }
+  applyResultsFind();
 }
 
 function renderTableHtml(columns, rows) {
@@ -1425,9 +1718,24 @@ async function loadHistory() {
 
 function renderHistory() {
   const list = document.getElementById("historyList");
-  document.getElementById("historyCount").textContent = `${history.length} run${history.length === 1 ? "" : "s"}`;
+  const searchInput = document.getElementById("historySearchInput");
+  const q = (searchInput ? searchInput.value : "").trim().toLowerCase();
+  const filtered = q
+    ? history.filter(
+        (h) => (h.query || "").toLowerCase().includes(q) || (h.connectionName || "").toLowerCase().includes(q),
+      )
+    : history;
+
+  document.getElementById("historyCount").textContent = q
+    ? `${filtered.length} of ${history.length} runs`
+    : `${history.length} run${history.length === 1 ? "" : "s"}`;
+
   if (history.length === 0) {
     list.innerHTML = `<div class="tree-empty" style="padding:16px 8px;">Runs you execute will show up here so you can jump back to them.</div>`;
+    return;
+  }
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="tree-empty" style="padding:16px 8px;">No runs match "${escapeHtml(q)}".</div>`;
     return;
   }
   list.innerHTML = "";
@@ -1435,7 +1743,7 @@ function renderHistory() {
   label.className = "history-day";
   label.textContent = "RECENT";
   list.appendChild(label);
-  history.forEach((h) => {
+  filtered.forEach((h) => {
     const el = document.createElement("div");
     el.className = "history-item";
     const timeStr = new Date(h.createdAt.replace(" ", "T") + "Z").toLocaleTimeString([], {
@@ -1467,6 +1775,8 @@ function renderHistory() {
     list.appendChild(el);
   });
 }
+
+document.getElementById("historySearchInput").addEventListener("input", () => renderHistory());
 
 async function deleteHistoryEntry(id) {
   try {
