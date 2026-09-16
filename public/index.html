@@ -51,6 +51,7 @@
         </div>
 
         <!-- ============ WORKSPACE ============ -->
+        <!-- ============ WORKSPACE ============ -->
         <div class="workspace">
 
             <!-- ---------- LEFT: connections & schema ---------- -->
@@ -144,6 +145,19 @@
                         <textarea class="code-input" id="codeInput" spellcheck="false" autocapitalize="off"
                             autocomplete="off"></textarea>
                         <div class="autocomplete-popup" id="autocompletePopup" style="display:none;"></div>
+                        <div class="selection-toolbar" id="selectionToolbar" style="display:none;">
+                            <span class="selection-toolbar-icon"><svg class="icon" width="12" height="12"
+                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="m12 3 1.7 4.3L18 9l-4.3 1.7L12 15l-1.7-4.3L6 9l4.3-1.7Z" />
+                                    <path d="M5 16l.8 2.2L8 19l-2.2.8L5 22l-.8-2.2L2 19l2.2-.8Z" />
+                                    <path d="M19 13l.6 1.6L21.2 15l-1.6.6L19 17.2l-.6-1.6L16.8 15l1.6-.6Z" />
+                                </svg></span>
+                            <button type="button" class="selection-toolbar-btn" id="selExplainBtn">Explain</button>
+                            <button type="button" class="selection-toolbar-btn" id="selFixBtn">Fix</button>
+                            <button type="button" class="selection-toolbar-btn selection-toolbar-btn-primary"
+                                id="selAskBtn">Ask…</button>
+                        </div>
                         <div class="find-bar editor-find-bar" id="editorFindBar" style="display:none;">
                             <span class="find-bar-icon"><svg class="icon" width="12" height="12" viewBox="0 0 24 24"
                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"

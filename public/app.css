@@ -182,9 +182,7 @@ button {
   border-right: 1px solid var(--border);
   height: 100%;
 }
-.brand .logo {
-  width: 100px;
-}
+
 .brand-mark {
   width: 20px;
   height: 20px;
@@ -915,6 +913,56 @@ kbd {
   position: relative;
   flex: 1;
   overflow: hidden;
+}
+
+.selection-toolbar {
+  position: absolute;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(27, 31, 39, 0.18);
+}
+
+.selection-toolbar-icon {
+  display: flex;
+  align-items: center;
+  color: var(--accent);
+  padding: 0 3px 0 4px;
+  flex-shrink: 0;
+}
+
+.selection-toolbar-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-mid);
+  border-radius: 5px;
+  padding: 5px 9px;
+  font-size: 11.5px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.selection-toolbar-btn:hover {
+  background: var(--bg-surface-raised);
+  color: var(--text-hi);
+}
+
+.selection-toolbar-btn-primary {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.selection-toolbar-btn-primary:hover {
+  background: var(--accent-hi);
+  color: #ffffff;
 }
 
 .find-bar {
@@ -2826,4 +2874,7 @@ table.result-table tbody tr:nth-child(even) td {
     width: 32px;
     height: 32px;
   }
+}
+.brand .logo {
+  width: 100px;
 }

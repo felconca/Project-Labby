@@ -787,6 +787,7 @@ codeInput.addEventListener("click", () => {
 });
 codeInput.addEventListener("blur", () => {
   setTimeout(hideAutocomplete, 120);
+  setTimeout(hideSelectionToolbar, 120);
 });
 
 codeInput.addEventListener("keydown", (e) => {
@@ -1327,6 +1328,94 @@ document.addEventListener("keydown", (e) => {
   const rf = document.getElementById("resultsFindBar");
   if (ef && ef.style.display !== "none") closeEditorFind();
   if (rf && rf.style.display !== "none") closeResultsFind();
+  hideSelectionToolbar();
+});
+
+/* =========================================================================
+   SELECT-AND-ASK — Cursor-style floating toolbar. Selecting text in the SQL
+   editor shows Explain / Fix / Ask actions that send that exact selection
+   to the agent chat, switching to the Chat panel (and expanding the
+   sidebar if it's collapsed) so the reply is immediately visible. This only
+   sends the selection to chat for a response — it doesn't rewrite the query
+   in place; applying a suggested fix back into the editor is a separate,
+   bigger feature for later if it's wanted.
+   ========================================================================= */
+function getEditorSelectionText() {
+  if (codeInput.selectionStart === codeInput.selectionEnd) return "";
+  return codeInput.value.slice(codeInput.selectionStart, codeInput.selectionEnd);
+}
+
+function positionSelectionToolbar() {
+  const bar = document.getElementById("selectionToolbar");
+  const pos = getCaretPixelPosition(codeInput, codeInput.selectionEnd);
+  const areaWidth = codeInput.getBoundingClientRect().width;
+
+  bar.style.display = "flex"; // must be visible to measure its own size below
+  const barRect = bar.getBoundingClientRect();
+
+  let top = pos.top - codeInput.scrollTop - barRect.height - 8;
+  let left = pos.left - codeInput.scrollLeft;
+
+  if (top < 0) top = pos.top - codeInput.scrollTop + LINE_HEIGHT + 4; // flip below if no room above
+  if (left + barRect.width > areaWidth) left = Math.max(0, areaWidth - barRect.width - 4);
+  if (left < 0) left = 0;
+
+  bar.style.top = top + "px";
+  bar.style.left = left + "px";
+}
+
+function showSelectionToolbar() {
+  const findOpen = document.getElementById("editorFindBar").style.display !== "none";
+  if (findOpen || !getEditorSelectionText()) {
+    hideSelectionToolbar();
+    return;
+  }
+  hideAutocomplete();
+  positionSelectionToolbar();
+}
+
+function hideSelectionToolbar() {
+  document.getElementById("selectionToolbar").style.display = "none";
+}
+
+codeInput.addEventListener("mouseup", showSelectionToolbar);
+codeInput.addEventListener("keyup", (e) => {
+  if (e.shiftKey) showSelectionToolbar();
+});
+codeInput.addEventListener("scroll", hideSelectionToolbar);
+// Prevent a button click from stealing focus/collapsing the selection before
+// the click handler below gets a chance to read it.
+document.getElementById("selectionToolbar").addEventListener("mousedown", (e) => e.preventDefault());
+
+async function sendSelectionToChat(promptText) {
+  hideSelectionToolbar();
+  const tab = getActiveTab();
+  if (!tab) return;
+  expandToSessionTab("chat");
+  await sendChatMessage(tab, promptText);
+}
+
+document.getElementById("selExplainBtn").addEventListener("click", () => {
+  const sel = getEditorSelectionText();
+  if (!sel) return;
+  sendSelectionToChat(`Explain what this part of the query does:\n\`\`\`sql\n${sel}\n\`\`\``);
+});
+document.getElementById("selFixBtn").addEventListener("click", () => {
+  const sel = getEditorSelectionText();
+  if (!sel) return;
+  sendSelectionToChat(`Find and fix any issues in this SQL, and explain what you changed:\n\`\`\`sql\n${sel}\n\`\`\``);
+});
+document.getElementById("selAskBtn").addEventListener("click", () => {
+  const sel = getEditorSelectionText();
+  if (!sel) return;
+  hideSelectionToolbar();
+  const tab = getActiveTab();
+  if (!tab) return;
+  expandToSessionTab("chat");
+  const input = document.getElementById("chatInput");
+  input.value = `About this part of the query:\n\`\`\`sql\n${sel}\n\`\`\`\n\n`;
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
 });
 
 /* =========================================================================
@@ -2399,15 +2488,12 @@ function buildQueryContextMessage() {
   return { role: "system", content };
 }
 
-document.getElementById("chatComposer").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const input = document.getElementById("chatInput");
-  const text = input.value.trim();
-  if (!text) return;
-  const tab = getActiveTab();
-  if (!tab) return;
-  input.value = "";
-  input.style.height = "auto";
+// Sends `text` as a new user turn in the given tab's active (or newly
+// created) chat session. Shared by the composer submit handler and the
+// editor's select-and-ask toolbar, so both go through the exact same
+// session bookkeeping, pending-bubble, and error handling.
+async function sendChatMessage(tab, text) {
+  if (!tab || !text || !text.trim()) return;
 
   let session = getActiveChatSession(tab);
   if (!session) {
@@ -2452,6 +2538,18 @@ document.getElementById("chatComposer").addEventListener("submit", async (e) => 
   renderChatPane();
   persistSession();
   sendBtn.disabled = false;
+}
+
+document.getElementById("chatComposer").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const input = document.getElementById("chatInput");
+  const text = input.value.trim();
+  if (!text) return;
+  const tab = getActiveTab();
+  if (!tab) return;
+  input.value = "";
+  input.style.height = "auto";
+  await sendChatMessage(tab, text);
   input.focus();
 });
 
