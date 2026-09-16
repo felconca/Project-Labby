@@ -1085,6 +1085,124 @@ kbd {
   visibility: visible;
 }
 
+.convert-fab-wrap {
+  position: absolute;
+  bottom: 14px;
+  right: 26px;
+  z-index: 25;
+}
+
+.convert-fab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(27, 31, 39, 0.18);
+}
+
+.convert-fab:hover {
+  background: var(--bg-surface-raised);
+  border-color: #c3cad5;
+}
+
+.convert-fab:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.convert-fab-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  min-width: 150px;
+  padding: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(27, 31, 39, 0.18);
+}
+
+.convert-fab-item {
+  padding: 7px 9px;
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--text-mid);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.convert-fab-item:hover {
+  background: var(--bg-surface-raised);
+  color: var(--text-hi);
+}
+
+.conversion-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.conversion-tab-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-low);
+  padding: 9px 11px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+
+.conversion-tab-btn:hover {
+  color: var(--text-hi);
+}
+
+.conversion-tab-btn.is-active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.conversion-body {
+  padding: 0;
+}
+
+.conversion-code {
+  margin: 0;
+  padding: 16px;
+  max-height: 420px;
+  overflow: auto;
+  font-family: var(--font-code);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-hi);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.conversion-code.is-error {
+  color: var(--error);
+}
+
+.conversion-foot-hint {
+  font-size: 11px;
+  color: var(--text-low);
+}
+
+.conversion-foot-spacer {
+  flex: 1;
+}
+
 .find-bar {
   position: absolute;
   top: 8px;
@@ -2033,6 +2151,10 @@ table.result-table tbody tr:nth-child(even) td {
   border-radius: 10px;
   box-shadow: 0 20px 50px rgba(27, 31, 39, 0.16);
   overflow: hidden;
+}
+
+.modal-wide {
+  width: min(680px, calc(100vw - 32px));
 }
 
 .modal-head {

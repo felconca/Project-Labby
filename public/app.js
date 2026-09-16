@@ -589,7 +589,7 @@ function closeTab(id) {
 // Save/Format/Clear/Run act on the current tab's content, so they need one
 // open. Open .sql and the connection selector are entry points that create
 // or target a tab themselves, so they stay usable even with none open.
-const TOOLBAR_BUTTON_IDS = ["runBtn", "formatBtn", "clearBtn", "saveFileBtn"];
+const TOOLBAR_BUTTON_IDS = ["runBtn", "formatBtn", "clearBtn", "saveFileBtn", "convertFabBtn"];
 
 function updateSaveButtonLabel(tab) {
   const label = document.getElementById("saveFileLabel");
@@ -1476,12 +1476,12 @@ document.addEventListener("click", (e) => {
 // back into the editor, not markdown.
 function stripCodeFence(text) {
   const trimmed = text.trim();
-  const fullMatch = /^```(?:sql)?\s*\n?([\s\S]*?)\n?```$/i.exec(trimmed);
+  const fullMatch = /^```[a-z0-9_+-]*\s*\n?([\s\S]*?)\n?```$/i.exec(trimmed);
   if (fullMatch) return fullMatch[1].trim();
   // The model may have added prose around the fence despite instructions
   // not to — pull out just the fenced portion rather than dumping the
   // whole reply (commentary included) into the editor.
-  const anyFenceMatch = /```(?:sql)?\s*\n?([\s\S]*?)\n?```/i.exec(trimmed);
+  const anyFenceMatch = /```[a-z0-9_+-]*\s*\n?([\s\S]*?)\n?```/i.exec(trimmed);
   if (anyFenceMatch) return anyFenceMatch[1].trim();
   return trimmed;
 }
@@ -2244,6 +2244,185 @@ async function renderAiSettings() {
     });
   });
 }
+
+/* =========================================================================
+   CONVERT QUERY — floating button in the editor opens a menu of target
+   languages/dialects (PHP, PostgreSQL, MongoDB, Node.js, SQLite, MSSQL).
+   Picking one opens a modal with tabs for all six, each generated on demand
+   by asking the currently-selected AI model to translate the active tab's
+   SQL — the same /api/chat pipeline the chat panel and select-and-ask use.
+   There's no hand-rolled SQL parser here: dialect conversion and especially
+   SQL-to-MongoDB translation genuinely need language understanding, not
+   regex, so this leans on the model rather than trying to half-fake it.
+   ========================================================================= */
+const CONVERT_TARGETS = {
+  php: {
+    label: "PHP",
+    ext: "php",
+    instruction:
+      "Convert this SQL query into equivalent PHP code that runs it using PDO with a prepared statement " +
+      "(parameterize any literal values), including a short placeholder connection setup as a comment.",
+  },
+  postgres: {
+    label: "PostgreSQL",
+    ext: "sql",
+    instruction: "Convert this SQL query into equivalent, valid PostgreSQL syntax.",
+  },
+  mongodb: {
+    label: "MongoDB",
+    ext: "js",
+    instruction:
+      "Convert this SQL query into the equivalent MongoDB query using the official Node.js MongoDB driver " +
+      "(db.collection.find(...) for simple queries, or an aggregate([...]) pipeline if it needs joins, grouping, or sorting).",
+  },
+  nodejs: {
+    label: "Node.js",
+    ext: "js",
+    instruction:
+      "Convert this SQL query into equivalent Node.js code that runs it with async/await, using the driver " +
+      "that matches the source database (mysql2 for MySQL, pg for PostgreSQL), including a short placeholder " +
+      "connection setup as a comment.",
+  },
+  sqlite: {
+    label: "SQLite",
+    ext: "sql",
+    instruction: "Convert this SQL query into equivalent, valid SQLite syntax.",
+  },
+  mssql: {
+    label: "MSSQL",
+    ext: "sql",
+    instruction: "Convert this SQL query into equivalent, valid Microsoft SQL Server (T-SQL) syntax.",
+  },
+};
+
+let conversionCache = {};
+let conversionActiveTarget = null;
+
+document.getElementById("convertFabBtn").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const tab = getActiveTab();
+  if (!tab) return;
+  const menu = document.getElementById("convertFabMenu");
+  menu.style.display = menu.style.display === "none" ? "block" : "none";
+});
+document.querySelectorAll(".convert-fab-item").forEach((item) => {
+  item.addEventListener("click", () => {
+    document.getElementById("convertFabMenu").style.display = "none";
+    const tab = getActiveTab();
+    if (!tab || !tab.query || !tab.query.trim()) {
+      alert("Write a query first — there's nothing to convert yet.");
+      return;
+    }
+    openConversionModal(item.dataset.target);
+  });
+});
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("#convertFabWrap")) {
+    document.getElementById("convertFabMenu").style.display = "none";
+  }
+});
+
+function openConversionModal(initialTarget) {
+  conversionCache = {};
+  document.getElementById("conversionOverlay").classList.add("open");
+  switchConversionTab(initialTarget || "php");
+}
+
+function closeConversionModal() {
+  document.getElementById("conversionOverlay").classList.remove("open");
+}
+
+function switchConversionTab(target) {
+  conversionActiveTarget = target;
+  document.querySelectorAll(".conversion-tab-btn").forEach((btn) => {
+    btn.classList.toggle("is-active", btn.dataset.target === target);
+  });
+  renderConversionCode();
+  const entry = conversionCache[target];
+  if (!entry || entry.status === "error") generateConversion(target);
+}
+
+document.querySelectorAll(".conversion-tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => switchConversionTab(btn.dataset.target));
+});
+
+function renderConversionCode() {
+  const codeEl = document.getElementById("conversionCode");
+  const hintEl = document.getElementById("conversionHint");
+  const entry = conversionCache[conversionActiveTarget];
+  const meta = CONVERT_TARGETS[conversionActiveTarget];
+
+  if (!entry || entry.status === "loading") {
+    codeEl.textContent = "Generating…";
+    codeEl.classList.remove("is-error");
+    hintEl.textContent = "";
+    return;
+  }
+  if (entry.status === "error") {
+    codeEl.textContent = entry.error;
+    codeEl.classList.add("is-error");
+    hintEl.textContent = "";
+    return;
+  }
+  codeEl.textContent = entry.code;
+  codeEl.classList.remove("is-error");
+  hintEl.textContent = `${meta.label} · ${entry.code.split("\n").length} lines`;
+}
+
+async function generateConversion(target) {
+  const tab = getActiveTab();
+  if (!tab || !tab.query || !tab.query.trim()) return;
+
+  conversionCache[target] = { status: "loading" };
+  if (target === conversionActiveTarget) renderConversionCode();
+
+  const meta = CONVERT_TARGETS[target];
+  const conn = findConn(tab.connId);
+  const sourceType = conn ? conn.type : "mysql";
+  const model = document.getElementById("chatModelSelect").value;
+  const prompt =
+    `${meta.instruction}\n\n` +
+    `Source database type: ${sourceType}.\n` +
+    `Source SQL:\n\`\`\`sql\n${tab.query}\n\`\`\`\n\n` +
+    `Reply with ONLY the resulting ${meta.label} code — no explanation, no markdown fences — ` +
+    `since it will be shown directly as code and may be copied or exported as-is.`;
+
+  try {
+    const data = await api("/chat", {
+      method: "POST",
+      body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }] }),
+    });
+    conversionCache[target] = { status: "done", code: stripCodeFence(data.reply) };
+  } catch (err) {
+    conversionCache[target] = { status: "error", error: err.message };
+  }
+  if (target === conversionActiveTarget) renderConversionCode();
+}
+
+document.getElementById("conversionCopyBtn").addEventListener("click", async () => {
+  const entry = conversionCache[conversionActiveTarget];
+  if (!entry || entry.status !== "done") return;
+  try {
+    await copyTextToClipboard(entry.code);
+  } catch (err) {
+    alert("Could not copy: " + err.message);
+  }
+});
+document.getElementById("conversionExportBtn").addEventListener("click", () => {
+  const entry = conversionCache[conversionActiveTarget];
+  if (!entry || entry.status !== "done") return;
+  const meta = CONVERT_TARGETS[conversionActiveTarget];
+  const tab = getActiveTab();
+  const base = (tab && tab.title ? tab.title : "query").replace(/[^a-z0-9_-]+/gi, "_");
+  downloadBlob(entry.code, `${base}.${meta.ext}`, "text/plain");
+});
+
+document.getElementById("closeConversion").addEventListener("click", closeConversionModal);
+document.getElementById("closeConversion2").addEventListener("click", closeConversionModal);
+const conversionOverlay = document.getElementById("conversionOverlay");
+conversionOverlay.addEventListener("click", (e) => {
+  if (e.target === conversionOverlay) closeConversionModal();
+});
 
 /* =========================================================================
    CHAT MODEL PICKER — Cursor-style Cloud/Local selector. Cloud models

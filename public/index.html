@@ -191,6 +191,25 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="convert-fab-wrap" id="convertFabWrap">
+                            <button type="button" class="convert-fab" id="convertFabBtn"
+                                title="Convert query to another language">
+                                <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="16 18 22 12 16 6" />
+                                    <polyline points="8 6 2 12 8 18" />
+                                </svg>
+                            </button>
+                            <div class="convert-fab-menu" id="convertFabMenu" style="display:none;">
+                                <div class="convert-fab-item" data-target="php">PHP</div>
+                                <div class="convert-fab-item" data-target="postgres">PostgreSQL</div>
+                                <div class="convert-fab-item" data-target="mongodb">MongoDB</div>
+                                <div class="convert-fab-item" data-target="nodejs">Node.js</div>
+                                <div class="convert-fab-item" data-target="sqlite">SQLite</div>
+                                <div class="convert-fab-item" data-target="mssql">MSSQL</div>
+                            </div>
+                        </div>
                         <div class="find-bar editor-find-bar" id="editorFindBar" style="display:none;">
                             <span class="find-bar-icon"><svg class="icon" width="12" height="12" viewBox="0 0 24 24"
                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -502,6 +521,50 @@
             </div>
             <div class="modal-foot">
                 <button class="btn btn-ghost" id="closeAiSettings2">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ CONVERT QUERY MODAL ============ -->
+    <div class="modal-overlay" id="conversionOverlay">
+        <div class="modal modal-wide">
+            <div class="modal-head">
+                Convert query
+                <span class="x" id="closeConversion"><svg class="icon" width="15" height="15" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M18 6 6 18" />
+                        <path d="m6 6 12 12" />
+                    </svg></span>
+            </div>
+            <div class="conversion-tabs" id="conversionTabs">
+                <button type="button" class="conversion-tab-btn" data-target="php">PHP</button>
+                <button type="button" class="conversion-tab-btn" data-target="postgres">PostgreSQL</button>
+                <button type="button" class="conversion-tab-btn" data-target="mongodb">MongoDB</button>
+                <button type="button" class="conversion-tab-btn" data-target="nodejs">Node.js</button>
+                <button type="button" class="conversion-tab-btn" data-target="sqlite">SQLite</button>
+                <button type="button" class="conversion-tab-btn" data-target="mssql">MSSQL</button>
+            </div>
+            <div class="modal-body conversion-body">
+                <pre class="conversion-code" id="conversionCode"></pre>
+            </div>
+            <div class="modal-foot">
+                <span class="conversion-foot-hint" id="conversionHint"></span>
+                <span class="conversion-foot-spacer"></span>
+                <button class="btn btn-ghost" id="conversionCopyBtn"><svg class="icon" width="13" height="13"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>Copy</button>
+                <button class="btn btn-ghost" id="conversionExportBtn"><svg class="icon" width="13" height="13"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>Export</button>
+                <button class="btn btn-ghost" id="closeConversion2">Close</button>
             </div>
         </div>
     </div>
