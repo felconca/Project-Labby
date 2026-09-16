@@ -49,8 +49,6 @@
                 </select>
             </div>
         </div>
-
-        <!-- ============ WORKSPACE ============ -->
         <!-- ============ WORKSPACE ============ -->
         <div class="workspace">
 
@@ -145,18 +143,53 @@
                         <textarea class="code-input" id="codeInput" spellcheck="false" autocapitalize="off"
                             autocomplete="off"></textarea>
                         <div class="autocomplete-popup" id="autocompletePopup" style="display:none;"></div>
-                        <div class="selection-toolbar" id="selectionToolbar" style="display:none;">
-                            <span class="selection-toolbar-icon"><svg class="icon" width="12" height="12"
-                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                    stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="m12 3 1.7 4.3L18 9l-4.3 1.7L12 15l-1.7-4.3L6 9l4.3-1.7Z" />
-                                    <path d="M5 16l.8 2.2L8 19l-2.2.8L5 22l-.8-2.2L2 19l2.2-.8Z" />
-                                    <path d="M19 13l.6 1.6L21.2 15l-1.6.6L19 17.2l-.6-1.6L16.8 15l1.6-.6Z" />
-                                </svg></span>
-                            <button type="button" class="selection-toolbar-btn" id="selExplainBtn">Explain</button>
-                            <button type="button" class="selection-toolbar-btn" id="selFixBtn">Fix</button>
-                            <button type="button" class="selection-toolbar-btn selection-toolbar-btn-primary"
-                                id="selAskBtn">Ask…</button>
+                        <div class="selection-panel" id="selectionPanel" style="display:none;">
+                            <div class="selection-panel-head">
+                                <span class="selection-panel-title">Edit selected code</span>
+                                <span class="selection-panel-close" id="selectionPanelClose" title="Close (Esc)"><svg
+                                        class="icon" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                        stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <path d="M18 6 6 18" />
+                                        <path d="m6 6 12 12" />
+                                    </svg></span>
+                            </div>
+                            <textarea class="selection-panel-input" id="selectionPanelInput" rows="2"
+                                placeholder="Edit selected code…"></textarea>
+                            <div class="selection-panel-result" id="selectionPanelResult" style="display:none;"></div>
+                            <div class="selection-panel-foot">
+                                <span class="selection-panel-hint">Enter to run · Shift+Enter for a new line</span>
+                                <div class="selection-mode-wrap" id="selectionModeWrap">
+                                    <button type="button" class="selection-mode-trigger" id="selectionModeTrigger">
+                                        <span id="selectionModeLabel">Edit Selection</span>
+                                        <svg class="icon" width="11" height="11" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                            stroke-linejoin="round">
+                                            <polyline points="6 9 12 15 18 9" />
+                                        </svg>
+                                    </button>
+                                    <div class="selection-mode-menu" id="selectionModeMenu" style="display:none;">
+                                        <div class="selection-mode-item" data-mode="edit"><span>Edit
+                                                Selection</span><svg class="icon selection-mode-check" width="12"
+                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="20 6 9 17 4 12" />
+                                            </svg></div>
+                                        <div class="selection-mode-item" data-mode="ask"><span>Quick Question</span><svg
+                                                class="icon selection-mode-check" width="12" height="12"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="20 6 9 17 4 12" />
+                                            </svg></div>
+                                        <div class="selection-mode-item" data-mode="chat"><span>Send to Chat</span><svg
+                                                class="icon selection-mode-check" width="12" height="12"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="20 6 9 17 4 12" />
+                                            </svg></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="find-bar editor-find-bar" id="editorFindBar" style="display:none;">
                             <span class="find-bar-icon"><svg class="icon" width="12" height="12" viewBox="0 0 24 24"

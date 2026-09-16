@@ -785,10 +785,6 @@ codeInput.addEventListener("scroll", () => {
 codeInput.addEventListener("click", () => {
   updateAutocomplete();
 });
-codeInput.addEventListener("blur", () => {
-  setTimeout(hideAutocomplete, 120);
-  setTimeout(hideSelectionToolbar, 120);
-});
 
 codeInput.addEventListener("keydown", (e) => {
   if (acState.visible) {
@@ -1328,94 +1324,265 @@ document.addEventListener("keydown", (e) => {
   const rf = document.getElementById("resultsFindBar");
   if (ef && ef.style.display !== "none") closeEditorFind();
   if (rf && rf.style.display !== "none") closeResultsFind();
-  hideSelectionToolbar();
+  hideSelectionPanel();
 });
 
 /* =========================================================================
-   SELECT-AND-ASK — Cursor-style floating toolbar. Selecting text in the SQL
-   editor shows Explain / Fix / Ask actions that send that exact selection
-   to the agent chat, switching to the Chat panel (and expanding the
-   sidebar if it's collapsed) so the reply is immediately visible. This only
-   sends the selection to chat for a response — it doesn't rewrite the query
-   in place; applying a suggested fix back into the editor is a separate,
-   bigger feature for later if it's wanted.
+   SELECT-AND-ASK — Cursor-style panel. Selecting text in the SQL editor
+   shows a small floating panel with a free-form instruction box and a mode
+   picker:
+     Edit Selection  — rewrites the selection in place with the model's reply
+     Quick Question  — asks about the selection, answer shown inline here
+     Send to Chat    — hands it off to the full agent chat panel
+   The picked mode is remembered (localStorage) like the model picker.
    ========================================================================= */
+const SELECTION_MODE_KEY = "querybench.selectionmode.v1";
+const SELECTION_MODE_LABELS = { edit: "Edit Selection", ask: "Quick Question", chat: "Send to Chat" };
+let selectionPanelMode = "edit";
+let editorSelectionRange = { start: 0, end: 0 };
+
 function getEditorSelectionText() {
   if (codeInput.selectionStart === codeInput.selectionEnd) return "";
   return codeInput.value.slice(codeInput.selectionStart, codeInput.selectionEnd);
 }
 
-function positionSelectionToolbar() {
-  const bar = document.getElementById("selectionToolbar");
+function positionSelectionPanel() {
+  const panel = document.getElementById("selectionPanel");
   const pos = getCaretPixelPosition(codeInput, codeInput.selectionEnd);
   const areaWidth = codeInput.getBoundingClientRect().width;
 
-  bar.style.display = "flex"; // must be visible to measure its own size below
-  const barRect = bar.getBoundingClientRect();
+  panel.style.display = "flex"; // must be visible to measure its own size below
+  const panelRect = panel.getBoundingClientRect();
 
-  let top = pos.top - codeInput.scrollTop - barRect.height - 8;
+  let top = pos.top - codeInput.scrollTop - panelRect.height - 8;
   let left = pos.left - codeInput.scrollLeft;
 
   if (top < 0) top = pos.top - codeInput.scrollTop + LINE_HEIGHT + 4; // flip below if no room above
-  if (left + barRect.width > areaWidth) left = Math.max(0, areaWidth - barRect.width - 4);
+  if (left + panelRect.width > areaWidth) left = Math.max(0, areaWidth - panelRect.width - 4);
   if (left < 0) left = 0;
 
-  bar.style.top = top + "px";
-  bar.style.left = left + "px";
+  panel.style.top = top + "px";
+  panel.style.left = left + "px";
 }
 
-function showSelectionToolbar() {
+function showSelectionPanel() {
   const findOpen = document.getElementById("editorFindBar").style.display !== "none";
   if (findOpen || !getEditorSelectionText()) {
-    hideSelectionToolbar();
+    // Don't yank the panel away while the user is actively typing in it —
+    // only auto-hide for a genuinely empty/irrelevant selection state.
+    if (document.activeElement !== document.getElementById("selectionPanelInput")) {
+      hideSelectionPanel();
+    }
     return;
   }
+  editorSelectionRange = { start: codeInput.selectionStart, end: codeInput.selectionEnd };
   hideAutocomplete();
-  positionSelectionToolbar();
+  positionSelectionPanel();
 }
 
-function hideSelectionToolbar() {
-  document.getElementById("selectionToolbar").style.display = "none";
+function hideSelectionPanel() {
+  document.getElementById("selectionPanel").style.display = "none";
+  document.getElementById("selectionModeMenu").style.display = "none";
+  const input = document.getElementById("selectionPanelInput");
+  input.value = "";
+  const resultEl = document.getElementById("selectionPanelResult");
+  resultEl.style.display = "none";
+  resultEl.textContent = "";
+  resultEl.classList.remove("selection-panel-result-error");
 }
 
-codeInput.addEventListener("mouseup", showSelectionToolbar);
+codeInput.addEventListener("mouseup", showSelectionPanel);
 codeInput.addEventListener("keyup", (e) => {
-  if (e.shiftKey) showSelectionToolbar();
+  if (e.shiftKey) showSelectionPanel();
 });
-codeInput.addEventListener("scroll", hideSelectionToolbar);
-// Prevent a button click from stealing focus/collapsing the selection before
-// the click handler below gets a chance to read it.
-document.getElementById("selectionToolbar").addEventListener("mousedown", (e) => e.preventDefault());
+codeInput.addEventListener("scroll", hideSelectionPanel);
 
-async function sendSelectionToChat(promptText) {
-  hideSelectionToolbar();
-  const tab = getActiveTab();
-  if (!tab) return;
-  expandToSessionTab("chat");
-  await sendChatMessage(tab, promptText);
+// Clicking anything in the panel except the actual text input shouldn't
+// steal focus away from wherever it currently is (this is what stops a
+// button click from collapsing the editor's text selection). The input
+// itself needs normal click-to-focus behavior so typing works at all.
+document.getElementById("selectionPanel").addEventListener("mousedown", (e) => {
+  if (e.target.id === "selectionPanelInput") return;
+  e.preventDefault();
+});
+
+// The panel needs to hold focus independently of the editor once the user
+// clicks into its input box — so blur only closes it once focus has moved
+// somewhere genuinely outside the panel (and isn't just back to the editor,
+// which happens naturally if they click back in to adjust the selection).
+codeInput.addEventListener("blur", () => {
+  setTimeout(hideAutocomplete, 120);
+  setTimeout(() => {
+    if (!document.getElementById("selectionPanel").contains(document.activeElement)) {
+      hideSelectionPanel();
+    }
+  }, 120);
+});
+document.getElementById("selectionPanelInput").addEventListener("blur", () => {
+  setTimeout(() => {
+    const active = document.activeElement;
+    if (active !== codeInput && !document.getElementById("selectionPanel").contains(active)) {
+      hideSelectionPanel();
+    }
+  }, 120);
+});
+
+document.getElementById("selectionPanelClose").addEventListener("click", hideSelectionPanel);
+
+function setSelectionMode(mode) {
+  selectionPanelMode = mode;
+  document.getElementById("selectionModeLabel").textContent = SELECTION_MODE_LABELS[mode] || mode;
+  document.querySelectorAll(".selection-mode-item").forEach((el) => {
+    el.classList.toggle("is-selected", el.dataset.mode === mode);
+  });
+  try {
+    localStorage.setItem(SELECTION_MODE_KEY, mode);
+  } catch (e) {
+    /* ignore */
+  }
 }
 
-document.getElementById("selExplainBtn").addEventListener("click", () => {
-  const sel = getEditorSelectionText();
-  if (!sel) return;
-  sendSelectionToChat(`Explain what this part of the query does:\n\`\`\`sql\n${sel}\n\`\`\``);
+function initSelectionMode() {
+  let saved = "edit";
+  try {
+    saved = localStorage.getItem(SELECTION_MODE_KEY) || "edit";
+  } catch (e) {
+    /* ignore */
+  }
+  setSelectionMode(SELECTION_MODE_LABELS[saved] ? saved : "edit");
+}
+initSelectionMode();
+
+document.getElementById("selectionModeTrigger").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const menu = document.getElementById("selectionModeMenu");
+  menu.style.display = menu.style.display === "none" ? "block" : "none";
 });
-document.getElementById("selFixBtn").addEventListener("click", () => {
-  const sel = getEditorSelectionText();
-  if (!sel) return;
-  sendSelectionToChat(`Find and fix any issues in this SQL, and explain what you changed:\n\`\`\`sql\n${sel}\n\`\`\``);
+document.querySelectorAll(".selection-mode-item").forEach((el) => {
+  el.addEventListener("click", () => {
+    setSelectionMode(el.dataset.mode);
+    document.getElementById("selectionModeMenu").style.display = "none";
+    document.getElementById("selectionPanelInput").focus();
+  });
 });
-document.getElementById("selAskBtn").addEventListener("click", () => {
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("#selectionModeWrap")) {
+    document.getElementById("selectionModeMenu").style.display = "none";
+  }
+});
+
+// Strips a single leading/trailing ```sql ... ``` fence if the model wrapped
+// its answer in one, since "Edit Selection" needs raw SQL to drop straight
+// back into the editor, not markdown.
+function stripCodeFence(text) {
+  const trimmed = text.trim();
+  const fullMatch = /^```(?:sql)?\s*\n?([\s\S]*?)\n?```$/i.exec(trimmed);
+  if (fullMatch) return fullMatch[1].trim();
+  // The model may have added prose around the fence despite instructions
+  // not to — pull out just the fenced portion rather than dumping the
+  // whole reply (commentary included) into the editor.
+  const anyFenceMatch = /```(?:sql)?\s*\n?([\s\S]*?)\n?```/i.exec(trimmed);
+  if (anyFenceMatch) return anyFenceMatch[1].trim();
+  return trimmed;
+}
+
+// Replaces the originally-selected range with `newText` using execCommand
+// so it lands on the browser's native undo stack (Ctrl+Z works afterwards) —
+// setting codeInput.value directly would silently bypass that.
+function applyEditToSelection(newText) {
+  codeInput.focus();
+  codeInput.setSelectionRange(editorSelectionRange.start, editorSelectionRange.end);
+  const applied = document.execCommand && document.execCommand("insertText", false, newText);
+  if (!applied) {
+    const { start, end } = editorSelectionRange;
+    codeInput.value = codeInput.value.slice(0, start) + newText + codeInput.value.slice(end);
+    codeInput.setSelectionRange(start, start + newText.length);
+  }
+  codeInput.dispatchEvent(new Event("input"));
+}
+
+function showSelectionResult(text, isError) {
+  const resultEl = document.getElementById("selectionPanelResult");
+  resultEl.style.display = "block";
+  resultEl.textContent = text;
+  resultEl.classList.toggle("selection-panel-result-error", !!isError);
+}
+
+async function runQuickQuestion(instruction, sel) {
+  const model = document.getElementById("chatModelSelect").value;
+  showSelectionResult("Thinking…", false);
+  const question = instruction || "What does this SQL do?";
+  const contextMessage = buildQueryContextMessage();
+  const messages = [
+    ...(contextMessage ? [contextMessage] : []),
+    { role: "user", content: `${question}\n\nSelected SQL:\n\`\`\`sql\n${sel}\n\`\`\`` },
+  ];
+  try {
+    const data = await api("/chat", { method: "POST", body: JSON.stringify({ model, messages }) });
+    showSelectionResult(data.reply, false);
+  } catch (err) {
+    showSelectionResult(err.message, true);
+  }
+}
+
+async function runEditSelection(instruction, sel) {
+  const model = document.getElementById("chatModelSelect").value;
+  showSelectionResult("Editing…", false);
+  const ask = instruction || "Fix any issues in this SQL.";
+  const prompt =
+    `${ask}\n\nSelected SQL:\n\`\`\`sql\n${sel}\n\`\`\`\n\n` +
+    `Reply with ONLY the corrected SQL for this selection — no explanation, no markdown fences — ` +
+    `since your reply will directly replace the selected text.`;
+  try {
+    const data = await api("/chat", {
+      method: "POST",
+      body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }] }),
+    });
+    applyEditToSelection(stripCodeFence(data.reply));
+    hideSelectionPanel();
+  } catch (err) {
+    showSelectionResult(err.message, true);
+  }
+}
+
+async function submitSelectionPanel() {
   const sel = getEditorSelectionText();
-  if (!sel) return;
-  hideSelectionToolbar();
-  const tab = getActiveTab();
-  if (!tab) return;
-  expandToSessionTab("chat");
-  const input = document.getElementById("chatInput");
-  input.value = `About this part of the query:\n\`\`\`sql\n${sel}\n\`\`\`\n\n`;
-  input.focus();
-  input.setSelectionRange(input.value.length, input.value.length);
+  if (!sel) {
+    hideSelectionPanel();
+    return;
+  }
+  const instruction = document.getElementById("selectionPanelInput").value.trim();
+
+  if (selectionPanelMode === "chat") {
+    const tab = getActiveTab();
+    if (!tab) return;
+    const prompt = instruction
+      ? `${instruction}\n\nSelected SQL:\n\`\`\`sql\n${sel}\n\`\`\``
+      : `About this part of the query:\n\`\`\`sql\n${sel}\n\`\`\``;
+    hideSelectionPanel();
+    expandToSessionTab("chat");
+    await sendChatMessage(tab, prompt);
+    return;
+  }
+
+  if (selectionPanelMode === "ask") {
+    await runQuickQuestion(instruction, sel);
+    return;
+  }
+
+  await runEditSelection(instruction, sel);
+}
+
+document.getElementById("selectionPanelInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    submitSelectionPanel();
+  }
+  if (e.key === "Escape") {
+    e.preventDefault();
+    hideSelectionPanel();
+    codeInput.focus();
+  }
 });
 
 /* =========================================================================
