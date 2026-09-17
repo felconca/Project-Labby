@@ -25,6 +25,7 @@
   --str: #b45309;
   --num: #0f766e;
   --cmt: #98a1b0;
+  --var-color: #c2410c;
   --radius-sm: 4px;
   --radius-md: 6px;
   --font-ui: "IBM Plex Sans", sans-serif;
@@ -55,6 +56,7 @@ html[data-theme="dark"] {
   --str: #fbbf24;
   --num: #2dd4bf;
   --cmt: #656d7d;
+  --var-color: #fb923c;
 }
 
 html[data-theme="dark"] .error-block {
@@ -1045,10 +1047,8 @@ kbd {
 }
 
 .selection-mode-menu {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  right: 0;
-  z-index: 40;
+  position: fixed;
+  z-index: 60;
   min-width: 160px;
   padding: 4px;
   background: var(--bg-surface);
@@ -1437,6 +1437,10 @@ html[data-theme="dark"] mark.search-hit {
 
 .fn {
   color: #9333ea;
+}
+
+.var {
+  color: var(--var-color);
 }
 
 /* results */
@@ -2499,6 +2503,17 @@ table.result-table tbody tr:nth-child(even) td {
 
 .custom-select-option.is-selected .custom-select-check {
   opacity: 1;
+}
+
+.custom-select-option-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--text-mid);
+}
+
+.custom-select-option.is-selected .custom-select-option-icon {
+  color: var(--text-hi);
 }
 
 .custom-select-option-label {

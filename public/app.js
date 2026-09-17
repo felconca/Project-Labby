@@ -732,6 +732,186 @@ function highlightSql(text) {
   return out + "\n";
 }
 
+// Generic single-pass highlighter: scans the RAW text once, classifies each
+// token, and escapes+wraps it exactly once. This is deliberately different
+// from highlightSql's sequential-regex-passes approach above — that only
+// works for SQL because no SQL keyword happens to collide with the wrapper
+// span's own "class" attribute name. PHP's `class` keyword collides with it
+// directly (a sequential pass would corrupt class="cmt" into
+// <span class="kw">class</span>="cmt"), so PHP/JS need a real tokenizer that
+// never re-scans its own already-emitted HTML.
+function tokenizeHighlight(text, tokenRegex, classify) {
+  let result = "";
+  let lastIndex = 0;
+  let m;
+  tokenRegex.lastIndex = 0;
+  while ((m = tokenRegex.exec(text)) !== null) {
+    const token = m[0];
+    const offset = m.index;
+    result += escapeHtml(text.slice(lastIndex, offset));
+    const cls = classify(token, text, offset);
+    result += cls ? `<span class="${cls}">${escapeHtml(token)}</span>` : escapeHtml(token);
+    lastIndex = offset + token.length;
+    if (tokenRegex.lastIndex === m.index) tokenRegex.lastIndex++; // guard against zero-length matches
+  }
+  result += escapeHtml(text.slice(lastIndex));
+  return result;
+}
+
+const PHP_KEYWORDS = new Set([
+  "echo",
+  "print",
+  "function",
+  "return",
+  "if",
+  "else",
+  "elseif",
+  "endif",
+  "foreach",
+  "endforeach",
+  "for",
+  "endfor",
+  "while",
+  "endwhile",
+  "do",
+  "switch",
+  "case",
+  "break",
+  "continue",
+  "default",
+  "class",
+  "interface",
+  "extends",
+  "implements",
+  "new",
+  "public",
+  "private",
+  "protected",
+  "static",
+  "const",
+  "final",
+  "abstract",
+  "try",
+  "catch",
+  "finally",
+  "throw",
+  "namespace",
+  "use",
+  "require",
+  "require_once",
+  "include",
+  "include_once",
+  "array",
+  "true",
+  "false",
+  "null",
+  "and",
+  "or",
+  "xor",
+  "instanceof",
+  "global",
+  "as",
+  "isset",
+  "unset",
+  "empty",
+  "list",
+  "yield",
+  "fn",
+  "match",
+]);
+// Comments, block comments, heredoc/nowdoc (treated as one string span,
+// not parsed further), quoted strings, the open tag, variables, numbers,
+// then a generic identifier (classified below as keyword/function/plain).
+const PHP_TOKEN_RE =
+  /\/\/[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\/|<<<\s*'?([A-Za-z_]\w*)'?[\s\S]*?\n\1\b|'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|<\?php\b|\$[A-Za-z_]\w*|\b\d+(?:\.\d+)?\b|\b[A-Za-z_]\w*\b/g;
+
+function classifyPhp(token, fullText, offset) {
+  if (token.startsWith("//") || token.startsWith("#") || token.startsWith("/*")) return "cmt";
+  if (token.startsWith("<<<")) return "str";
+  if (token.startsWith("'") || token.startsWith('"')) return "str";
+  if (token === "<?php") return "kw";
+  if (token.startsWith("$")) return "var";
+  if (/^\d+(\.\d+)?$/.test(token)) return "num";
+  if (PHP_KEYWORDS.has(token.toLowerCase())) return "kw";
+  if (/^[A-Za-z_]\w*$/.test(token)) {
+    const after = fullText.slice(offset + token.length);
+    if (/^\s*\(/.test(after)) return "fn";
+  }
+  return null;
+}
+
+function highlightPhp(text) {
+  return tokenizeHighlight(text, PHP_TOKEN_RE, classifyPhp);
+}
+
+const JS_KEYWORDS = new Set([
+  "const",
+  "let",
+  "var",
+  "function",
+  "return",
+  "if",
+  "else",
+  "for",
+  "while",
+  "do",
+  "switch",
+  "case",
+  "break",
+  "continue",
+  "default",
+  "class",
+  "extends",
+  "new",
+  "try",
+  "catch",
+  "finally",
+  "throw",
+  "async",
+  "await",
+  "import",
+  "export",
+  "from",
+  "typeof",
+  "instanceof",
+  "null",
+  "undefined",
+  "true",
+  "false",
+  "this",
+  "require",
+  "module",
+  "exports",
+  "of",
+  "in",
+  "yield",
+  "static",
+  "get",
+  "set",
+]);
+// Template literals are treated as one string span rather than parsing
+// ${...} interpolation — the code this app generates never uses it (the
+// embedded SQL is escaped into a plain backtick string), so that's not a
+// real limitation here, just a simplification.
+const JS_TOKEN_RE =
+  /\/\/[^\n]*|\/\*[\s\S]*?\*\/|`(?:[^`\\]|\\.)*`|'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|\b\d+(?:\.\d+)?\b|\b[A-Za-z_$][\w$]*\b/g;
+
+function classifyJs(token, fullText, offset) {
+  if (token.startsWith("//") || token.startsWith("/*")) return "cmt";
+  if (token.startsWith("`") || token.startsWith("'") || token.startsWith('"')) return "str";
+  if (/^\d+(\.\d+)?$/.test(token)) return "num";
+  if (JS_KEYWORDS.has(token)) return "kw";
+  if (/^[A-Za-z_$][\w$]*$/.test(token)) {
+    const after = fullText.slice(offset + token.length);
+    if (/^\s*\(/.test(after)) return "fn";
+  }
+  return null;
+}
+
+function highlightJs(text) {
+  return tokenizeHighlight(text, JS_TOKEN_RE, classifyJs);
+}
+
 function refreshHighlight() {
   let html = highlightSql(codeInput.value);
   if (editorFindTerm) html = highlightSearchInHtml(html, editorFindTerm);
@@ -1456,7 +1636,23 @@ initSelectionMode();
 document.getElementById("selectionModeTrigger").addEventListener("click", (e) => {
   e.stopPropagation();
   const menu = document.getElementById("selectionModeMenu");
-  menu.style.display = menu.style.display === "none" ? "block" : "none";
+  if (menu.style.display !== "none") {
+    menu.style.display = "none";
+    return;
+  }
+  const trigger = e.currentTarget;
+  menu.style.display = "block"; // must be visible to measure its own size below
+  const triggerRect = trigger.getBoundingClientRect();
+  const menuRect = menu.getBoundingClientRect();
+
+  let top = triggerRect.top - menuRect.height - 6;
+  if (top < 4) top = triggerRect.bottom + 6; // flip below if there's no room above
+  let left = triggerRect.right - menuRect.width;
+  if (left < 4) left = 4;
+  if (left + menuRect.width > window.innerWidth - 4) left = window.innerWidth - menuRect.width - 4;
+
+  menu.style.top = top + "px";
+  menu.style.left = left + "px";
 });
 document.querySelectorAll(".selection-mode-item").forEach((el) => {
   el.addEventListener("click", () => {
@@ -2247,74 +2443,122 @@ async function renderAiSettings() {
 
 /* =========================================================================
    CONVERT QUERY — floating button in the editor opens a menu of target
-   languages/dialects (PHP, PostgreSQL, MongoDB, Node.js, SQLite, MSSQL).
-   Picking one opens a modal with tabs for all six, each generated on demand
-   by asking the currently-selected AI model to translate the active tab's
-   SQL — the same /api/chat pipeline the chat panel and select-and-ask use.
-   There's no hand-rolled SQL parser here: dialect conversion and especially
-   SQL-to-MongoDB translation genuinely need language understanding, not
-   regex, so this leans on the model rather than trying to half-fake it.
+   languages/dialects. The list adapts to the active tab's source
+   connection: PHP, Node.js, SQLite, and MSSQL are always offered, plus
+   whichever of MySQL/PostgreSQL ISN'T the source (converting a dialect to
+   itself would be a no-op). Nothing here calls an AI model or the network
+   for PHP/Node.js — those are just the raw SQL dropped into standard
+   PDO / mysql2-pg driver boilerplate. The three real dialect conversions
+   (cross MySQL<->PostgreSQL, SQLite, MSSQL) go through node-sql-parser on
+   the server, which does genuine AST-based translation rather than string
+   substitution — reliable for standard SQL, but with known, disclosed
+   gaps: dialect-specific functions (MySQL's IFNULL/DATE_FORMAT, say) pass
+   through unchanged rather than being remapped, and MSSQL's LIMIT isn't
+   rewritten to OFFSET/FETCH. A parse failure is reported plainly.
    ========================================================================= */
-const CONVERT_TARGETS = {
-  php: {
-    label: "PHP",
-    ext: "php",
-    instruction:
-      "Convert this SQL query into equivalent PHP code that runs it using PDO with a prepared statement " +
-      "(parameterize any literal values), including a short placeholder connection setup as a comment.",
-  },
-  postgres: {
-    label: "PostgreSQL",
-    ext: "sql",
-    instruction: "Convert this SQL query into equivalent, valid PostgreSQL syntax.",
-  },
-  mongodb: {
-    label: "MongoDB",
-    ext: "js",
-    instruction:
-      "Convert this SQL query into the equivalent MongoDB query using the official Node.js MongoDB driver " +
-      "(db.collection.find(...) for simple queries, or an aggregate([...]) pipeline if it needs joins, grouping, or sorting).",
-  },
-  nodejs: {
-    label: "Node.js",
-    ext: "js",
-    instruction:
-      "Convert this SQL query into equivalent Node.js code that runs it with async/await, using the driver " +
-      "that matches the source database (mysql2 for MySQL, pg for PostgreSQL), including a short placeholder " +
-      "connection setup as a comment.",
-  },
-  sqlite: {
-    label: "SQLite",
-    ext: "sql",
-    instruction: "Convert this SQL query into equivalent, valid SQLite syntax.",
-  },
-  mssql: {
-    label: "MSSQL",
-    ext: "sql",
-    instruction: "Convert this SQL query into equivalent, valid Microsoft SQL Server (T-SQL) syntax.",
-  },
+const CONVERT_TARGET_LABELS = {
+  php: "PHP",
+  nodejs: "Node.js",
+  mysql: "MySQL",
+  postgres: "PostgreSQL",
+  sqlite: "SQLite",
+  mssql: "MSSQL",
 };
+const CONVERT_TARGET_EXT = { php: "php", nodejs: "js", mysql: "sql", postgres: "sql", sqlite: "sql", mssql: "sql" };
+
+// PHP/Node.js are always offered; the cross-dialect target is whichever of
+// mysql/postgres ISN'T the source. SQLite/MSSQL are offered for either.
+function getConvertTargetsForSourceType(sourceType) {
+  const crossDialect = sourceType === "postgres" ? "mysql" : "postgres";
+  return ["php", crossDialect, "sqlite", "mssql", "nodejs"];
+}
+
+function generatePhpCode(sql, sourceType) {
+  const dsn = sourceType === "postgres" ? "pgsql:host=localhost;dbname=your_db" : "mysql:host=localhost;dbname=your_db";
+  return [
+    "<?php",
+    "",
+    "// Adjust host/dbname/user/password for your environment.",
+    `$pdo = new PDO('${dsn}', 'user', 'password');`,
+    "$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);",
+    "",
+    "$stmt = $pdo->query(<<<'SQL'",
+    sql.trim(),
+    "SQL);",
+    "",
+    "$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);",
+    "foreach ($rows as $row) {",
+    "    print_r($row);",
+    "}",
+  ].join("\n");
+}
+
+function generateNodeJsCode(sql, sourceType) {
+  const escaped = sql.trim().replace(/`/g, "\\`");
+  if (sourceType === "postgres") {
+    return [
+      "const { Client } = require('pg');",
+      "",
+      "// Adjust the connection string for your environment.",
+      "const client = new Client({ connectionString: 'postgres://user:password@localhost:5432/your_db' });",
+      "",
+      "(async () => {",
+      "  await client.connect();",
+      "  const sql = `" + escaped + "`;",
+      "  const { rows } = await client.query(sql);",
+      "  console.log(rows);",
+      "  await client.end();",
+      "})();",
+    ].join("\n");
+  }
+  return [
+    "const mysql = require('mysql2/promise');",
+    "",
+    "(async () => {",
+    "  // Adjust host/user/password/database for your environment.",
+    "  const connection = await mysql.createConnection({",
+    "    host: 'localhost',",
+    "    user: 'user',",
+    "    password: 'password',",
+    "    database: 'your_db',",
+    "  });",
+    "  const sql = `" + escaped + "`;",
+    "  const [rows] = await connection.query(sql);",
+    "  console.log(rows);",
+    "  await connection.end();",
+    "})();",
+  ].join("\n");
+}
 
 let conversionCache = {};
 let conversionActiveTarget = null;
+let conversionSourceType = "mysql";
 
 document.getElementById("convertFabBtn").addEventListener("click", (e) => {
   e.stopPropagation();
   const tab = getActiveTab();
   if (!tab) return;
+  const conn = findConn(tab.connId);
+  const sourceType = conn ? conn.type : "mysql";
   const menu = document.getElementById("convertFabMenu");
-  menu.style.display = menu.style.display === "none" ? "block" : "none";
-});
-document.querySelectorAll(".convert-fab-item").forEach((item) => {
-  item.addEventListener("click", () => {
-    document.getElementById("convertFabMenu").style.display = "none";
-    const tab = getActiveTab();
-    if (!tab || !tab.query || !tab.query.trim()) {
-      alert("Write a query first — there's nothing to convert yet.");
-      return;
-    }
-    openConversionModal(item.dataset.target);
+  if (menu.style.display !== "none") {
+    menu.style.display = "none";
+    return;
+  }
+  menu.innerHTML = getConvertTargetsForSourceType(sourceType)
+    .map((t) => `<div class="convert-fab-item" data-target="${t}">${CONVERT_TARGET_LABELS[t]}</div>`)
+    .join("");
+  menu.querySelectorAll(".convert-fab-item").forEach((item) => {
+    item.addEventListener("click", () => {
+      menu.style.display = "none";
+      if (!tab.query || !tab.query.trim()) {
+        alert("Write a query first — there's nothing to convert yet.");
+        return;
+      }
+      openConversionModal(item.dataset.target, sourceType);
+    });
   });
+  menu.style.display = "block";
 });
 document.addEventListener("click", (e) => {
   if (!e.target.closest("#convertFabWrap")) {
@@ -2322,8 +2566,18 @@ document.addEventListener("click", (e) => {
   }
 });
 
-function openConversionModal(initialTarget) {
+function openConversionModal(initialTarget, sourceType) {
   conversionCache = {};
+  conversionSourceType = sourceType;
+  const tabsEl = document.getElementById("conversionTabs");
+  tabsEl.innerHTML = getConvertTargetsForSourceType(sourceType)
+    .map(
+      (t) => `<button type="button" class="conversion-tab-btn" data-target="${t}">${CONVERT_TARGET_LABELS[t]}</button>`,
+    )
+    .join("");
+  tabsEl.querySelectorAll(".conversion-tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => switchConversionTab(btn.dataset.target));
+  });
   document.getElementById("conversionOverlay").classList.add("open");
   switchConversionTab(initialTarget || "php");
 }
@@ -2342,15 +2596,20 @@ function switchConversionTab(target) {
   if (!entry || entry.status === "error") generateConversion(target);
 }
 
-document.querySelectorAll(".conversion-tab-btn").forEach((btn) => {
-  btn.addEventListener("click", () => switchConversionTab(btn.dataset.target));
-});
+const CONVERT_TARGET_HIGHLIGHTER = {
+  php: highlightPhp,
+  nodejs: highlightJs,
+  mysql: highlightSql,
+  postgres: highlightSql,
+  sqlite: highlightSql,
+  mssql: highlightSql,
+};
 
 function renderConversionCode() {
   const codeEl = document.getElementById("conversionCode");
   const hintEl = document.getElementById("conversionHint");
   const entry = conversionCache[conversionActiveTarget];
-  const meta = CONVERT_TARGETS[conversionActiveTarget];
+  const label = CONVERT_TARGET_LABELS[conversionActiveTarget];
 
   if (!entry || entry.status === "loading") {
     codeEl.textContent = "Generating…";
@@ -2364,9 +2623,10 @@ function renderConversionCode() {
     hintEl.textContent = "";
     return;
   }
-  codeEl.textContent = entry.code;
+  const highlighter = CONVERT_TARGET_HIGHLIGHTER[conversionActiveTarget] || null;
+  codeEl.innerHTML = highlighter ? highlighter(entry.code) : escapeHtml(entry.code);
   codeEl.classList.remove("is-error");
-  hintEl.textContent = `${meta.label} · ${entry.code.split("\n").length} lines`;
+  hintEl.textContent = `${label} · ${entry.code.split("\n").length} lines`;
 }
 
 async function generateConversion(target) {
@@ -2376,23 +2636,25 @@ async function generateConversion(target) {
   conversionCache[target] = { status: "loading" };
   if (target === conversionActiveTarget) renderConversionCode();
 
-  const meta = CONVERT_TARGETS[target];
-  const conn = findConn(tab.connId);
-  const sourceType = conn ? conn.type : "mysql";
-  const model = document.getElementById("chatModelSelect").value;
-  const prompt =
-    `${meta.instruction}\n\n` +
-    `Source database type: ${sourceType}.\n` +
-    `Source SQL:\n\`\`\`sql\n${tab.query}\n\`\`\`\n\n` +
-    `Reply with ONLY the resulting ${meta.label} code — no explanation, no markdown fences — ` +
-    `since it will be shown directly as code and may be copied or exported as-is.`;
+  // PHP/Node.js: pure client-side templating, no network, always succeeds.
+  if (target === "php") {
+    conversionCache[target] = { status: "done", code: generatePhpCode(tab.query, conversionSourceType) };
+    if (target === conversionActiveTarget) renderConversionCode();
+    return;
+  }
+  if (target === "nodejs") {
+    conversionCache[target] = { status: "done", code: generateNodeJsCode(tab.query, conversionSourceType) };
+    if (target === conversionActiveTarget) renderConversionCode();
+    return;
+  }
 
+  // Everything else is a real dialect conversion via node-sql-parser server-side.
   try {
-    const data = await api("/chat", {
+    const data = await api("/convert-sql", {
       method: "POST",
-      body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }] }),
+      body: JSON.stringify({ sql: tab.query, sourceDialect: conversionSourceType, targetDialect: target }),
     });
-    conversionCache[target] = { status: "done", code: stripCodeFence(data.reply) };
+    conversionCache[target] = { status: "done", code: data.code };
   } catch (err) {
     conversionCache[target] = { status: "error", error: err.message };
   }
@@ -2411,10 +2673,10 @@ document.getElementById("conversionCopyBtn").addEventListener("click", async () 
 document.getElementById("conversionExportBtn").addEventListener("click", () => {
   const entry = conversionCache[conversionActiveTarget];
   if (!entry || entry.status !== "done") return;
-  const meta = CONVERT_TARGETS[conversionActiveTarget];
+  const ext = CONVERT_TARGET_EXT[conversionActiveTarget];
   const tab = getActiveTab();
   const base = (tab && tab.title ? tab.title : "query").replace(/[^a-z0-9_-]+/gi, "_");
-  downloadBlob(entry.code, `${base}.${meta.ext}`, "text/plain");
+  downloadBlob(entry.code, `${base}.${ext}`, "text/plain");
 });
 
 document.getElementById("closeConversion").addEventListener("click", closeConversionModal);
@@ -2449,9 +2711,7 @@ function formatBytes(n) {
 function updateChatModelUi(value) {
   const isLocal = value === "local" || value.startsWith("local:");
   document.getElementById("chatModelIcon").innerHTML = icon(isLocal ? "cpu" : "cloud", 12);
-  document.getElementById("chatModelHint").textContent = isLocal
-    ? "Runs locally (node-llama-cpp) — not wired up yet"
-    : "Cloud API — preview only, not connected";
+  document.getElementById("chatModelHint").textContent = isLocal ? "Runs locally (node-llama-cpp)" : "Cloud API";
 }
 
 function getSelectedChatModelLabel() {
@@ -2480,7 +2740,7 @@ async function loadLocalModels() {
     }
     const uploadOpt = document.createElement("option");
     uploadOpt.value = "__upload_local__";
-    uploadOpt.textContent = "+ Upload a local model…";
+    uploadOpt.textContent = "Upload a local model";
     group.appendChild(uploadOpt);
   } catch (err) {
     group.innerHTML = '<option value="" disabled>Could not load local models</option>';
@@ -2995,7 +3255,6 @@ function applyTheme(pref) {
   const iconName = pref === "dark" ? "moon" : pref === "light" ? "sun" : "monitor";
   const iconEl = document.getElementById("themeIcon");
   if (iconEl) iconEl.innerHTML = icon(iconName, 13);
-
   // Update #logoBench image source according to the resolved theme.
   const logoEl = document.getElementById("logoBench");
   if (logoEl) {
@@ -3133,6 +3392,30 @@ function qbIsMobile() {
 
 function qbSvg(name, size) {
   return typeof icon === "function" ? icon(name, size || 14) : "";
+}
+
+// Gives dropdown options a meaningful leading icon instead of just the
+// selected-item checkmark: connection type logos, theme icons, and
+// cloud/local for the model picker.
+function getCustomSelectOptionIcon(selectId, optionValue) {
+  if (selectId === "themeSelect" || selectId === "mobileThemeSelect") {
+    if (optionValue === "light") return qbSvg("sun", 13);
+    if (optionValue === "dark") return qbSvg("moon", 13);
+    if (optionValue === "system") return qbSvg("monitor", 13);
+    return "";
+  }
+  if (selectId === "connectionSelect" || selectId === "mobileConnectionSelect") {
+    if (optionValue === "__add__") return qbSvg("plus", 13);
+    if (!optionValue) return "";
+    const conn = typeof findConn === "function" ? findConn(optionValue) : null;
+    return conn ? dbLogo(conn.type, 13) : "";
+  }
+  if (selectId === "chatModelSelect") {
+    if (optionValue === "__upload_local__") return qbSvg("plus", 13);
+    if (!optionValue) return "";
+    return optionValue.startsWith("local:") ? qbSvg("cpu", 13) : qbSvg("cloud", 13);
+  }
+  return "";
 }
 
 function qbCloseMenus(except) {
@@ -3466,7 +3749,11 @@ function qbInitCustomSelects() {
         item.setAttribute("role", "option");
         item.dataset.value = option.value;
         item.disabled = option.disabled;
-        item.innerHTML = `<span class="custom-select-check">${qbSvg("check", 14) || "✓"}</span><span class="custom-select-option-label"></span>`;
+        const leadingIcon = getCustomSelectOptionIcon(select.id, option.value);
+        item.innerHTML =
+          `<span class="custom-select-check">${qbSvg("check", 14) || "✓"}</span>` +
+          (leadingIcon ? `<span class="custom-select-option-icon">${leadingIcon}</span>` : "") +
+          `<span class="custom-select-option-label"></span>`;
         item.querySelector(".custom-select-option-label").textContent = option.textContent;
         item.classList.toggle("is-selected", option.value === current);
         item.addEventListener("click", () => {

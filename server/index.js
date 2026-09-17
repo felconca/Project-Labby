@@ -10,6 +10,7 @@ const historyRouter = require("./routes/history");
 const modelsRouter = require("./routes/models");
 const chatRouter = require("./routes/chat");
 const aiProvidersRouter = require("./routes/aiProviders");
+const convertSqlRouter = require("./routes/convertSql");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -22,6 +23,7 @@ app.use("/api/history", historyRouter);
 app.use("/api/models", modelsRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/ai-providers", aiProvidersRouter);
+app.use("/api/convert-sql", convertSqlRouter);
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
