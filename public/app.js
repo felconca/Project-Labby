@@ -995,6 +995,11 @@ codeInput.addEventListener("keydown", (e) => {
     if (tab) runQuery(tab, codeInput.value);
     return;
   }
+  if ((e.ctrlKey || e.metaKey) && e.key === "/") {
+    e.preventDefault();
+    toggleCommentSelection();
+    return;
+  }
   if (e.key === "Tab") {
     e.preventDefault();
     const start = codeInput.selectionStart,
@@ -1004,6 +1009,39 @@ codeInput.addEventListener("keydown", (e) => {
     codeInput.dispatchEvent(new Event("input"));
   }
 });
+
+// Ctrl+/ — toggles "-- " on every line touched by the selection (or just
+// the current line if nothing is selected). Mirrors common editor behavior:
+// if every non-blank line in range is already commented, uncomment them
+// all; otherwise comment all of them (blank lines are left alone).
+function toggleCommentSelection() {
+  const value = codeInput.value;
+  const selStart = codeInput.selectionStart;
+  const selEnd = codeInput.selectionEnd;
+
+  let lineStart = value.lastIndexOf("\n", selStart - 1) + 1;
+  let lineEndIdx = value.indexOf("\n", selEnd);
+  if (lineEndIdx === -1) lineEndIdx = value.length;
+
+  const block = value.slice(lineStart, lineEndIdx);
+  const lines = block.split("\n");
+
+  const nonEmptyLines = lines.filter((l) => l.trim().length > 0);
+  const allCommented = nonEmptyLines.length > 0 && nonEmptyLines.every((l) => /^\s*--/.test(l));
+
+  const newLines = allCommented
+    ? lines.map((l) => l.replace(/^(\s*)--\s?/, "$1"))
+    : lines.map((l) => (l.trim().length === 0 || /^\s*--/.test(l) ? l : l.replace(/^(\s*)/, "$1-- ")));
+
+  const newBlock = newLines.join("\n");
+  const delta = newBlock.length - block.length;
+
+  codeInput.value = value.slice(0, lineStart) + newBlock + value.slice(lineEndIdx);
+  codeInput.selectionStart = lineStart;
+  codeInput.selectionEnd = lineEndIdx + delta;
+  codeInput.dispatchEvent(new Event("input"));
+  codeInput.focus();
+}
 
 document.getElementById("formatBtn").addEventListener("click", () => {
   if (!getActiveTab()) return;
@@ -1498,6 +1536,32 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+// Ctrl/Cmd+S — save (in place if already linked/named, otherwise the same
+// picker/prompt the Save button uses). Ctrl/Cmd+Shift+S — always prompts
+// for a new location, even if one's already bound. Both preventDefault so
+// the browser's own "Save Page As" dialog never appears. Ctrl/Cmd+O opens
+// a .sql file, same as the Open button.
+document.addEventListener("keydown", (e) => {
+  if (!(e.ctrlKey || e.metaKey)) return;
+  const key = e.key.toLowerCase();
+
+  if (key === "s") {
+    e.preventDefault();
+    const tab = getActiveTab();
+    if (!tab) return;
+    if (e.shiftKey) {
+      saveTabAsNewFile(tab);
+    } else {
+      saveTabToFile(tab);
+    }
+    return;
+  }
+  if (key === "o") {
+    e.preventDefault();
+    openSqlFile();
+  }
+});
+
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   const ef = document.getElementById("editorFindBar");
@@ -1886,7 +1950,53 @@ document.getElementById("saveFileBtn").addEventListener("click", () => {
   if (tab) saveTabToFile(tab);
 });
 
-document.getElementById("openFileBtn").addEventListener("click", async () => {
+// Unlike saveTabToFile, this always asks for a fresh location — that's the
+// whole point of "Save As" — even when the tab already has a linked file
+// handle or a remembered filename from a previous save.
+async function saveTabAsNewFile(tab) {
+  const label = document.getElementById("saveFileLabel");
+
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: `${tab.title || "query"}.sql`,
+        types: [{ description: "SQL file", accept: { "application/sql": [".sql"] } }],
+      });
+      tab.fileHandle = handle;
+      tab.boundFilename = handle.name;
+      tab.title = handle.name.replace(/\.sql$/i, "");
+      const writable = await handle.createWritable();
+      await writable.write(tab.query);
+      await writable.close();
+      tab.dirty = false;
+      renderTabs();
+      updateSaveButtonLabel(tab);
+      persistSession();
+      flashLabel(label, "Saved!", 1100);
+    } catch (err) {
+      if (err && err.name !== "AbortError") alert("Could not save file: " + err.message);
+    }
+    return;
+  }
+
+  // Fallback (no File System Access API): always prompt for a fresh name,
+  // rather than silently reusing a name already chosen the way a plain
+  // Save would.
+  const input = prompt("Save as filename (without extension):", tab.title || "query");
+  if (input === null) return;
+  const clean = sanitizeFilename(input);
+  tab.title = clean;
+  tab.boundFilename = `${clean}.sql`;
+  tab.fileHandle = null;
+  tab.dirty = false;
+  renderTabs();
+  updateSaveButtonLabel(tab);
+  persistSession();
+  downloadBlob(tab.query, tab.boundFilename, "application/sql");
+  flashLabel(label, "Downloaded", 1100);
+}
+
+async function openSqlFile() {
   if (window.showOpenFilePicker) {
     try {
       const [handle] = await window.showOpenFilePicker({
@@ -1909,7 +2019,9 @@ document.getElementById("openFileBtn").addEventListener("click", async () => {
   }
   // Fallback: plain file input (Firefox/Safari/non-secure contexts) — read-only, no live handle.
   document.getElementById("openFileInput").click();
-});
+}
+
+document.getElementById("openFileBtn").addEventListener("click", openSqlFile);
 document.getElementById("openFileInput").addEventListener("change", (e) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -2711,7 +2823,7 @@ function formatBytes(n) {
 function updateChatModelUi(value) {
   const isLocal = value === "local" || value.startsWith("local:");
   document.getElementById("chatModelIcon").innerHTML = icon(isLocal ? "cpu" : "cloud", 12);
-  document.getElementById("chatModelHint").textContent = isLocal ? "Runs locally (node-llama-cpp)" : "Cloud API";
+  document.getElementById("chatModelHint").textContent = isLocal ? "Runs locally" : "Cloud API";
 }
 
 function getSelectedChatModelLabel() {
@@ -3255,7 +3367,7 @@ function applyTheme(pref) {
   const iconName = pref === "dark" ? "moon" : pref === "light" ? "sun" : "monitor";
   const iconEl = document.getElementById("themeIcon");
   if (iconEl) iconEl.innerHTML = icon(iconName, 13);
-  // Update #logoBench image source according to the resolved theme.
+
   const logoEl = document.getElementById("logoBench");
   if (logoEl) {
     if (resolvedTheme(pref) === "dark") {

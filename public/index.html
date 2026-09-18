@@ -12,7 +12,6 @@
 <body>
     <div class="app">
 
-
         <!-- ============ TOP BAR ============ -->
         <div class="topbar">
 
@@ -83,13 +82,14 @@
                     </div>
                     <div class="toolbar-spacer"></div>
                     <input type="file" id="openFileInput" accept=".sql,.txt" style="display:none">
-                    <button class="btn btn-sm btn-ghost" id="openFileBtn"><svg class="icon" width="13" height="13"
-                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round">
+                    <button class="btn btn-sm btn-ghost" id="openFileBtn" title="Open .sql (Ctrl+O)"><svg class="icon"
+                            width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path
                                 d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h4l2 3h8a2 2 0 0 1 2 2v2" />
                         </svg>Open .sql</button>
-                    <button class="btn btn-sm btn-ghost" id="saveFileBtn"><svg class="icon" width="13" height="13"
+                    <button class="btn btn-sm btn-ghost" id="saveFileBtn"
+                        title="Save (Ctrl+S) · Save As (Ctrl+Shift+S)"><svg class="icon" width="13" height="13"
                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                             stroke-linecap="round" stroke-linejoin="round">
                             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
@@ -468,7 +468,7 @@
                         <path d="M9 8V2" />
                         <path d="M15 8V2" />
                         <path d="M18 8v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z" />
-                    </svg>Test connection</button>
+                    </svg>Test</button>
                 <div class="topbar-spacer"></div>
                 <button class="btn btn-ghost" id="cancelModal">Cancel</button>
                 <button class="btn btn-primary" id="saveConn"><svg class="icon" width="13" height="13"
