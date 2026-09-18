@@ -2471,7 +2471,12 @@ document.getElementById("saveConn").addEventListener("click", async () => {
    Keys never round-trip back to the browser once saved; the modal only
    ever shows a configured/not-configured status.
    ========================================================================= */
-const PROVIDER_LABELS = { anthropic: "Anthropic (Claude)", openai: "OpenAI (GPT)", xai: "xAI (Grok)" };
+const PROVIDER_LABELS = {
+  anthropic: "Anthropic (Claude)",
+  openai: "OpenAI (GPT)",
+  xai: "xAI (Grok)",
+  custom: "Custom endpoint (Ollama, LM Studio, vLLM…)",
+};
 const aiSettingsOverlay = document.getElementById("aiSettingsOverlay");
 
 function openAiSettingsModal() {
@@ -2503,16 +2508,23 @@ async function renderAiSettings() {
   providers.forEach((p) => {
     const row = document.createElement("div");
     row.className = "provider-row";
+    const isCustom = p.provider === "custom";
+    const bodyHtml = isCustom
+      ? `<input type="text" placeholder="http://localhost:11434/v1" value="${escapeHtml(p.baseUrl || "")}" data-field="baseUrl" data-provider="${p.provider}">
+         <input type="password" placeholder="API key (often not needed)" data-field="apiKey" data-provider="${p.provider}">`
+      : `<input type="password" placeholder="${p.configured ? "Enter a new key to replace it" : "Paste API key"}" data-field="apiKey" data-provider="${p.provider}">`;
     row.innerHTML = `
   <div class="provider-row-head">
     <span class="provider-status-dot${p.configured ? " configured" : ""}"></span>
     <span class="provider-name">${escapeHtml(PROVIDER_LABELS[p.provider] || p.provider)}</span>
-    <span class="provider-status-text">${p.configured ? "Key saved" : "Not configured"}</span>
+    <span class="provider-status-text">${p.configured ? "Configured" : "Not configured"}</span>
   </div>
-  <div class="provider-row-body">
-    <input type="password" placeholder="${p.configured ? "Enter a new key to replace it" : "Paste API key"}" data-provider="${p.provider}">
-    <button class="btn btn-sm" data-action="save" data-provider="${p.provider}">Save</button>
-    <button class="btn btn-sm btn-ghost" data-action="remove" data-provider="${p.provider}" ${p.configured ? "" : "disabled"}>Remove</button>
+  <div class="provider-row-body${isCustom ? " provider-row-body-stacked" : ""}">
+    ${bodyHtml}
+    <div class="provider-row-actions">
+      <button class="btn btn-sm" data-action="save" data-provider="${p.provider}">Save</button>
+      <button class="btn btn-sm btn-ghost" data-action="remove" data-provider="${p.provider}" ${p.configured ? "" : "disabled"}>Remove</button>
+    </div>
   </div>`;
     body.appendChild(row);
   });
@@ -2520,19 +2532,29 @@ async function renderAiSettings() {
   body.querySelectorAll('[data-action="save"]').forEach((btn) => {
     btn.addEventListener("click", async () => {
       const provider = btn.dataset.provider;
-      const input = body.querySelector(`input[data-provider="${provider}"]`);
-      const apiKey = input.value.trim();
-      if (!apiKey) {
-        input.focus();
+      const apiKeyInput = body.querySelector(`input[data-field="apiKey"][data-provider="${provider}"]`);
+      const baseUrlInput = body.querySelector(`input[data-field="baseUrl"][data-provider="${provider}"]`);
+      const apiKey = apiKeyInput ? apiKeyInput.value.trim() : "";
+      const baseUrl = baseUrlInput ? baseUrlInput.value.trim() : "";
+
+      if (provider === "custom") {
+        if (!baseUrl) {
+          baseUrlInput.focus();
+          return;
+        }
+      } else if (!apiKey) {
+        apiKeyInput.focus();
         return;
       }
+
       btn.disabled = true;
       try {
-        await api(`/ai-providers/${provider}`, { method: "PUT", body: JSON.stringify({ apiKey }) });
+        await api(`/ai-providers/${provider}`, { method: "PUT", body: JSON.stringify({ apiKey, baseUrl }) });
         await renderAiSettings();
-        await loadLocalModels(); // no-op for cloud, but keeps things in sync if models change later
+        await loadLocalModels(); // no-op for cloud/custom, but keeps things in sync if models change later
+        if (provider === "custom") await loadCustomEndpointModels();
       } catch (err) {
-        alert("Could not save key: " + err.message);
+        alert("Could not save: " + err.message);
         btn.disabled = false;
       }
     });
@@ -2540,11 +2562,16 @@ async function renderAiSettings() {
   body.querySelectorAll('[data-action="remove"]').forEach((btn) => {
     btn.addEventListener("click", async () => {
       const provider = btn.dataset.provider;
-      if (!confirm(`Remove the saved ${PROVIDER_LABELS[provider] || provider} API key?`)) return;
+      const label =
+        provider === "custom"
+          ? "custom endpoint configuration"
+          : `saved ${PROVIDER_LABELS[provider] || provider} API key`;
+      if (!confirm(`Remove the ${label}?`)) return;
       btn.disabled = true;
       try {
         await api(`/ai-providers/${provider}`, { method: "DELETE" });
         await renderAiSettings();
+        if (provider === "custom") await loadCustomEndpointModels();
       } catch (err) {
         alert("Could not remove key: " + err.message);
         btn.disabled = false;
@@ -2822,8 +2849,13 @@ function formatBytes(n) {
 
 function updateChatModelUi(value) {
   const isLocal = value === "local" || value.startsWith("local:");
-  document.getElementById("chatModelIcon").innerHTML = icon(isLocal ? "cpu" : "cloud", 12);
-  document.getElementById("chatModelHint").textContent = isLocal ? "Runs locally" : "Cloud API";
+  const isCustom = value.startsWith("custom:");
+  const iconName = isLocal ? "cpu" : isCustom ? "server" : "cloud";
+  document.getElementById("chatModelIcon").innerHTML = icon(iconName, 12);
+  const hint = document.getElementById("chatModelHint");
+  if (isLocal) hint.textContent = "Runs locally (node-llama-cpp)";
+  else if (isCustom) hint.textContent = "Custom OpenAI-compatible endpoint";
+  else hint.textContent = "Cloud API";
 }
 
 function getSelectedChatModelLabel() {
@@ -2852,7 +2884,7 @@ async function loadLocalModels() {
     }
     const uploadOpt = document.createElement("option");
     uploadOpt.value = "__upload_local__";
-    uploadOpt.textContent = "Upload a local model";
+    uploadOpt.textContent = "Upload a local model…";
     group.appendChild(uploadOpt);
   } catch (err) {
     group.innerHTML = '<option value="" disabled>Could not load local models</option>';
@@ -2892,8 +2924,65 @@ document.getElementById("localModelFileInput").addEventListener("change", (e) =>
   if (file) uploadLocalModel(file);
 });
 
+// Populates the "Custom endpoint" group from whatever's actually available
+// on the configured OpenAI-compatible server (Ollama, LM Studio, vLLM…).
+// Shows a configure-trigger option when nothing's set up yet, or when the
+// endpoint can't be reached — never a plain empty group.
+async function loadCustomEndpointModels() {
+  const group = document.getElementById("customEndpointGroup");
+  const configureOpt = (label) => {
+    const opt = document.createElement("option");
+    opt.value = "__configure_custom__";
+    opt.textContent = label;
+    return opt;
+  };
+
+  let providers;
+  try {
+    providers = await api("/ai-providers");
+  } catch (err) {
+    group.innerHTML = "";
+    group.appendChild(configureOpt("+ Configure custom endpoint…"));
+    return;
+  }
+
+  const custom = providers.find((p) => p.provider === "custom");
+  if (!custom || !custom.configured) {
+    group.innerHTML = "";
+    group.appendChild(configureOpt("+ Configure custom endpoint…"));
+    return;
+  }
+
+  group.innerHTML = "";
+  try {
+    const models = await api("/ai-providers/custom/models");
+    if (models.length === 0) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.disabled = true;
+      opt.textContent = "No models found on that endpoint";
+      group.appendChild(opt);
+    } else {
+      models.forEach((id) => {
+        const opt = document.createElement("option");
+        opt.value = "custom:" + id;
+        opt.textContent = id;
+        group.appendChild(opt);
+      });
+    }
+  } catch (err) {
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.disabled = true;
+    opt.textContent = "Could not reach endpoint";
+    group.appendChild(opt);
+  }
+  group.appendChild(configureOpt("Reconfigure endpoint…"));
+}
+
 async function initChatModelPicker() {
   await loadLocalModels();
+  await loadCustomEndpointModels();
   const select = document.getElementById("chatModelSelect");
   let saved = "claude-sonnet";
   try {
@@ -2904,8 +2993,12 @@ async function initChatModelPicker() {
   if ([...select.options].some((o) => o.value === saved)) select.value = saved;
   updateChatModelUi(select.value);
   select.addEventListener("change", (e) => {
-    if (e.target.value === "__upload_local__") {
-      document.getElementById("localModelFileInput").click();
+    if (e.target.value === "__upload_local__" || e.target.value === "__configure_custom__") {
+      if (e.target.value === "__upload_local__") {
+        document.getElementById("localModelFileInput").click();
+      } else {
+        openAiSettingsModal();
+      }
       const fallback = (() => {
         try {
           return localStorage.getItem(CHAT_MODEL_KEY) || "claude-sonnet";
@@ -3523,9 +3616,11 @@ function getCustomSelectOptionIcon(selectId, optionValue) {
     return conn ? dbLogo(conn.type, 13) : "";
   }
   if (selectId === "chatModelSelect") {
-    if (optionValue === "__upload_local__") return qbSvg("plus", 13);
+    if (optionValue === "__upload_local__" || optionValue === "__configure_custom__") return qbSvg("plus", 13);
     if (!optionValue) return "";
-    return optionValue.startsWith("local:") ? qbSvg("cpu", 13) : qbSvg("cloud", 13);
+    if (optionValue.startsWith("local:")) return qbSvg("cpu", 13);
+    if (optionValue.startsWith("custom:")) return qbSvg("server", 13);
+    return qbSvg("cloud", 13);
   }
   return "";
 }

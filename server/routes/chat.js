@@ -25,6 +25,19 @@ router.post("/", async (req, res) => {
       return res.json({ reply });
     }
 
+    if (model.startsWith("custom:")) {
+      const modelId = model.slice("custom:".length);
+      const providerRow = db.prepare("SELECT * FROM ai_providers WHERE provider = 'custom'").get();
+      if (!providerRow) {
+        return res.status(400).json({
+          error: "No custom endpoint configured. Add one in the chat settings (gear icon) first.",
+        });
+      }
+      const apiKey = decrypt(providerRow.api_key_encrypted);
+      const reply = await aiProviderManager.chatCloud("custom", apiKey, modelId, messages, providerRow.base_url);
+      return res.json({ reply });
+    }
+
     const provider = aiProviderManager.MODEL_PROVIDER[model];
     if (!provider) return res.status(400).json({ error: `Unknown model "${model}".` });
 

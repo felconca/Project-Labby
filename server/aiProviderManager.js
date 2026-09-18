@@ -57,9 +57,9 @@ async function chatAnthropic(apiKey, model, messages) {
   return textBlock ? textBlock.text : "";
 }
 
-async function chatOpenAI(apiKey, model, messages) {
+async function chatOpenAI(apiKey, model, messages, baseUrl) {
   const modelId = OPENAI_MODEL_IDS[model] || model;
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+  const res = await fetch(`${baseUrl || "https://api.openai.com/v1"}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -92,10 +92,35 @@ async function chatXai(apiKey, model, messages) {
   return data.choices?.[0]?.message?.content || "";
 }
 
-async function chatCloud(provider, apiKey, model, messages) {
+async function chatCustomEndpoint(baseUrl, apiKey, model, messages) {
+  // Ollama, LM Studio, vLLM, and most other local inference servers all
+  // speak the same OpenAI-compatible /chat/completions shape, so this is
+  // chatOpenAI pointed at a user-supplied URL rather than a separate
+  // implementation. The model id is used as-is — there's no fixed mapping
+  // like the cloud providers have, since it's whatever the user's own
+  // server calls it (e.g. "llama3.1:8b").
+  return chatOpenAI(apiKey || "not-needed", model, messages, baseUrl);
+}
+
+// For populating the model dropdown: most OpenAI-compatible servers expose
+// GET /models returning { data: [{ id, ... }, ...] }, same as OpenAI's own
+// models list endpoint.
+async function listCustomEndpointModels(baseUrl, apiKey) {
+  const res = await fetch(`${baseUrl}/models`, {
+    headers: { Authorization: `Bearer ${apiKey || "not-needed"}` },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.error?.message || `Could not list models (${res.status})`);
+  }
+  return (data.data || []).map((m) => m.id).filter(Boolean);
+}
+
+async function chatCloud(provider, apiKey, model, messages, baseUrl) {
   if (provider === "anthropic") return chatAnthropic(apiKey, model, messages);
   if (provider === "openai") return chatOpenAI(apiKey, model, messages);
   if (provider === "xai") return chatXai(apiKey, model, messages);
+  if (provider === "custom") return chatCustomEndpoint(baseUrl, apiKey, model, messages);
   throw new Error(`Unsupported provider "${provider}".`);
 }
 
@@ -146,4 +171,4 @@ function forgetLocalSession(modelId) {
   localSessions.delete(modelId);
 }
 
-module.exports = { MODEL_PROVIDER, chatCloud, chatLocal, forgetLocalSession };
+module.exports = { MODEL_PROVIDER, chatCloud, chatLocal, forgetLocalSession, listCustomEndpointModels };

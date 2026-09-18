@@ -1,13 +1,13 @@
-const path = require('path');
-const fs = require('fs');
-const Database = require('better-sqlite3');
+const path = require("path");
+const fs = require("fs");
+const Database = require("better-sqlite3");
 
-const dbFile = process.env.DB_FILE || './data/query-bench.sqlite';
+const dbFile = process.env.DB_FILE || "./data/query-bench.sqlite";
 const resolvedPath = path.resolve(process.cwd(), dbFile);
 fs.mkdirSync(path.dirname(resolvedPath), { recursive: true });
 
 const db = new Database(resolvedPath);
-db.pragma('journal_mode = WAL');
+db.pragma("journal_mode = WAL");
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS connections (
@@ -48,10 +48,32 @@ db.exec(`
   );
 
   CREATE TABLE IF NOT EXISTS ai_providers (
-    provider TEXT PRIMARY KEY CHECK (provider IN ('anthropic', 'openai', 'xai')),
+    provider TEXT PRIMARY KEY CHECK (provider IN ('anthropic', 'openai', 'xai', 'custom')),
     api_key_encrypted TEXT NOT NULL,
+    base_url TEXT,
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 `);
+
+// Installs that ran before the 'custom' provider was added have this table
+// without base_url and with a narrower CHECK constraint. SQLite can't alter
+// a CHECK constraint or add a column mid-migration in one step, so recreate
+// the table under the new shape and copy any existing rows across.
+const aiProvidersColumns = db.prepare("PRAGMA table_info(ai_providers)").all();
+const hasBaseUrl = aiProvidersColumns.some((c) => c.name === "base_url");
+if (aiProvidersColumns.length > 0 && !hasBaseUrl) {
+  db.exec(`
+    ALTER TABLE ai_providers RENAME TO ai_providers_old;
+    CREATE TABLE ai_providers (
+      provider TEXT PRIMARY KEY CHECK (provider IN ('anthropic', 'openai', 'xai', 'custom')),
+      api_key_encrypted TEXT NOT NULL,
+      base_url TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    INSERT INTO ai_providers (provider, api_key_encrypted, updated_at)
+      SELECT provider, api_key_encrypted, updated_at FROM ai_providers_old;
+    DROP TABLE ai_providers_old;
+  `);
+}
 
 module.exports = db;

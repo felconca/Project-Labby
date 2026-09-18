@@ -2309,6 +2309,19 @@ table.result-table tbody tr:nth-child(even) td {
   gap: 6px;
 }
 
+.provider-row-body-stacked {
+  flex-direction: column;
+}
+
+.provider-row-body-stacked .provider-row-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.provider-row-actions {
+  display: contents;
+}
+
 .provider-row-body input {
   flex: 1;
   background: var(--bg-sunken);
