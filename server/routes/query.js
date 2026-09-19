@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const db = require("../db");
 const { decrypt } = require("../crypto");
 const driverManager = require("../driverManager");
+const { splitSqlStatements } = require("../sqlSplitter");
 
 const router = express.Router();
 
@@ -58,28 +59,66 @@ router.post("/", async (req, res) => {
     return res.status(404).json({ status: "error", message: `No connection with id "${connectionId}".` });
   }
 
-  try {
-    const result = await driverManager.runQuery(toInternal(connRow), database, sql, MAX_ROWS);
-    recordHistory({
-      connRow,
-      database,
-      sql,
-      status: "success",
-      rowCount: result.rowCount,
-      ms: result.ms,
-    });
-    res.json({
-      status: "success",
-      columns: result.columns,
-      rows: result.rows,
-      rowCount: result.rowCount,
-      truncated: result.truncated,
-      ms: result.ms,
-    });
-  } catch (err) {
-    recordHistory({ connRow, database, sql, status: "error", errorMessage: err.message });
-    res.status(400).json({ status: "error", message: err.message });
+  const statements = splitSqlStatements(sql);
+  if (statements.length === 0) {
+    return res.status(400).json({ status: "error", message: "Query text is empty." });
   }
+
+  // Single statement — exactly the original behavior and response shape,
+  // untouched, so nothing that already depends on it needs to change.
+  if (statements.length === 1) {
+    try {
+      const result = await driverManager.runQuery(toInternal(connRow), database, statements[0], MAX_ROWS);
+      recordHistory({
+        connRow,
+        database,
+        sql: statements[0],
+        status: "success",
+        rowCount: result.rowCount,
+        ms: result.ms,
+      });
+      res.json({
+        status: "success",
+        columns: result.columns,
+        rows: result.rows,
+        rowCount: result.rowCount,
+        truncated: result.truncated,
+        ms: result.ms,
+      });
+    } catch (err) {
+      recordHistory({ connRow, database, sql: statements[0], status: "error", errorMessage: err.message });
+      res.status(400).json({ status: "error", message: err.message });
+    }
+    return;
+  }
+
+  // Multiple statements: run each in turn against the same driver call every
+  // single-statement query already goes through — no driver-specific
+  // multi-statement handling needed, since each driver only ever sees one
+  // statement per call, exactly like today. Every statement runs regardless
+  // of whether an earlier one failed, so one bad statement in a batch
+  // doesn't hide the results of the others; each gets its own history entry
+  // too, same as if they'd been run one at a time.
+  const results = [];
+  for (const statement of statements) {
+    try {
+      const result = await driverManager.runQuery(toInternal(connRow), database, statement, MAX_ROWS);
+      recordHistory({ connRow, database, sql: statement, status: "success", rowCount: result.rowCount, ms: result.ms });
+      results.push({
+        status: "success",
+        sql: statement,
+        columns: result.columns,
+        rows: result.rows,
+        rowCount: result.rowCount,
+        truncated: result.truncated,
+        ms: result.ms,
+      });
+    } catch (err) {
+      recordHistory({ connRow, database, sql: statement, status: "error", errorMessage: err.message });
+      results.push({ status: "error", sql: statement, message: err.message });
+    }
+  }
+  res.json({ status: "success", multi: true, results });
 });
 
 module.exports = router;

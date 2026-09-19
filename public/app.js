@@ -190,6 +190,39 @@ function openNewTab(tab) {
   persistSession();
 }
 
+// Titles a result tab opened from a multi-statement run using the
+// statement's own first line, so "Result 1"/"Result 2" isn't the only clue
+// to which query produced which tab.
+// Pulls the table name out of a FROM/INTO/UPDATE clause — handles aliases
+// (FROM users u), schema-qualified names (schema.users, `schema`.`users`),
+// and each of MySQL/Postgres/SQLite's own quoting styles. Not a real SQL
+// parser, just enough pattern-matching to label a result tab meaningfully.
+function extractTableNameFromSql(sql) {
+  const idChain = '(?:[`"\\[]?\\w+[`"\\]]?\\.)*[`"\\[]?\\w+[`"\\]]?';
+  const patterns = [
+    new RegExp("\\bFROM\\s+(" + idChain + ")", "i"),
+    new RegExp("\\bINTO\\s+(" + idChain + ")", "i"),
+    new RegExp("\\bUPDATE\\s+(" + idChain + ")", "i"),
+  ];
+  for (const re of patterns) {
+    const m = sql.match(re);
+    if (m) {
+      const cleaned = m[1].replace(/[`"[\]]/g, "");
+      const parts = cleaned.split(".");
+      return parts[parts.length - 1];
+    }
+  }
+  return null;
+}
+
+function shortSqlTitle(sql, index) {
+  const tableName = extractTableNameFromSql(sql);
+  if (tableName) return tableName;
+  const firstLine = (sql.split("\n")[0] || "").trim();
+  if (!firstLine) return `Result ${index + 1}`;
+  return firstLine.length > 30 ? firstLine.slice(0, 30) + "…" : firstLine;
+}
+
 /* =========================================================================
    AUTOSAVE (localStorage) — remembers open tabs (title, query, target,
    view, bound filename) across page reloads. A live fileHandle can't be
@@ -541,9 +574,13 @@ function renderTabs() {
       ? "idle"
       : !tab.result
         ? "idle"
-        : tab.result.status === "success"
-          ? "success"
-          : "error";
+        : tab.result.multi
+          ? tab.result.results.some((r) => r.status === "error")
+            ? "error"
+            : "success"
+          : tab.result.status === "success"
+            ? "success"
+            : "error";
     const showDirty = (tab.fileHandle || tab.boundFilename) && tab.dirty;
     el.innerHTML = `<span class="dot ${dotClass}"></span>${showDirty ? '<span class="tab-dirty" title="Unsaved changes"></span>' : ""}<span class="tab-label">${escapeHtml(tab.title)}</span><span class="tab-close" data-role="close">${icon("x", 11)}</span>`;
     el.addEventListener("click", (e) => {
@@ -1466,7 +1503,8 @@ function applyResultsFind() {
   const countEl = document.getElementById("resultsFindCount");
   const tab = getActiveTab();
   if (!countEl) return;
-  if (!tab || !tab.result || tab.result.status !== "success") {
+  const result = getActiveResultData(tab);
+  if (!result || result.status !== "success") {
     countEl.textContent = "";
     return;
   }
@@ -2070,14 +2108,24 @@ async function runQuery(tab, sqlOverride) {
       method: "POST",
       body: JSON.stringify({ connectionId: tab.connId, database: tab.dbName, sql }),
     });
-    tab.result = {
-      status: "success",
-      columns: data.columns,
-      rows: data.rows,
-      ms: data.ms,
-      rowCount: data.rowCount,
-      truncated: data.truncated,
-    };
+
+    if (data.multi) {
+      // Multiple statements were run — keep them all on this same tab, with
+      // its own sub-tabs inside the results panel, rather than spawning a
+      // new top-level query tab per statement.
+      tab.result = { status: "success", multi: true, results: data.results };
+      tab.activeResultIndex = 0;
+      tab.chartConfig = null;
+    } else {
+      tab.result = {
+        status: "success",
+        columns: data.columns,
+        rows: data.rows,
+        ms: data.ms,
+        rowCount: data.rowCount,
+        truncated: data.truncated,
+      };
+    }
   } catch (err) {
     tab.result = { status: "error", message: err.message };
   }
@@ -2104,6 +2152,45 @@ function setStatus(kind, text) {
 /* =========================================================================
    RESULTS RENDERING
    ========================================================================= */
+// Resolves whatever is actually being looked at right now: the tab's own
+// single result, or (for a multi-statement run) whichever sub-result is
+// currently selected in the result sub-tabs. Everything that reads a
+// result for display/export/chat-context goes through this rather than
+// tab.result directly, so multi-result tabs don't need special-casing
+// scattered across the file.
+function getActiveResultData(tab) {
+  if (!tab || !tab.result) return null;
+  if (tab.result.multi) return tab.result.results[tab.activeResultIndex] || null;
+  return tab.result;
+}
+
+function renderResultSubTabs(tab) {
+  const bar = document.getElementById("resultSubTabs");
+  if (!tab.result || !tab.result.multi) {
+    bar.style.display = "none";
+    bar.innerHTML = "";
+    return;
+  }
+  bar.style.display = "flex";
+  bar.innerHTML = tab.result.results
+    .map((r, i) => {
+      const label = shortSqlTitle(r.sql, i);
+      const active = i === tab.activeResultIndex ? " is-active" : "";
+      return `<div class="result-sub-tab${active}" data-index="${i}" title="${escapeHtml(r.sql)}">
+        <span class="dot ${r.status === "error" ? "error" : "success"}"></span>${escapeHtml(label)}
+      </div>`;
+    })
+    .join("");
+  bar.querySelectorAll(".result-sub-tab").forEach((el) => {
+    el.addEventListener("click", () => {
+      tab.activeResultIndex = Number(el.dataset.index);
+      tab.chartConfig = null; // a different statement's result likely has different columns
+      renderResults(tab);
+      persistSession();
+    });
+  });
+}
+
 function renderResults(tab) {
   const body = document.getElementById("resultsBody");
   const copyBtn = document.getElementById("copyResultBtn");
@@ -2115,12 +2202,13 @@ function renderResults(tab) {
   document.getElementById("viewJsonBtn").classList.toggle("is-active", tab.view === "json");
   document.getElementById("viewChartBtn").classList.toggle("is-active", tab.view === "chart");
   document.getElementById("copyResultLabel").textContent = tab.view === "json" ? "Copy JSON" : "Copy CSV";
-  chartConfigBar.style.display =
-    tab.view === "chart" && tab.result && tab.result.status === "success" && tab.result.rows.length > 0
-      ? "flex"
-      : "none";
 
-  if (!tab.result) {
+  renderResultSubTabs(tab);
+  const result = getActiveResultData(tab);
+  chartConfigBar.style.display =
+    tab.view === "chart" && result && result.status === "success" && result.rows.length > 0 ? "flex" : "none";
+
+  if (!result) {
     setStatus("idle", "Not run yet");
     copyBtn.disabled = true;
     exportCsvBtn.disabled = true;
@@ -2138,7 +2226,7 @@ ${icon("inbox", 30)}
     return;
   }
 
-  if (tab.result.status === "error") {
+  if (result.status === "error") {
     setStatus("error", "Query failed");
     copyBtn.disabled = true;
     exportCsvBtn.disabled = true;
@@ -2147,13 +2235,13 @@ ${icon("inbox", 30)}
       activeChartInstance.destroy();
       activeChartInstance = null;
     }
-    body.innerHTML = `<div class="error-block"><div class="err-title">Query not executed</div>${escapeHtml(tab.result.message)}</div>`;
+    body.innerHTML = `<div class="error-block"><div class="err-title">Query not executed</div>${escapeHtml(result.message)}</div>`;
     applyResultsFind();
     return;
   }
 
-  const truncNote = tab.result.truncated ? ` (truncated to ${tab.result.rows.length})` : "";
-  setStatus("success", `${tab.result.rowCount} rows${truncNote} · ${tab.result.ms} ms`);
+  const truncNote = result.truncated ? ` (truncated to ${result.rows.length})` : "";
+  setStatus("success", `${result.rowCount} rows${truncNote} · ${result.ms} ms`);
   copyBtn.disabled = false;
   exportCsvBtn.disabled = false;
   exportJsonBtn.disabled = false;
@@ -2163,15 +2251,15 @@ ${icon("inbox", 30)}
       activeChartInstance.destroy();
       activeChartInstance = null;
     }
-    body.innerHTML = renderTableHtml(tab.result.columns, tab.result.rows);
+    body.innerHTML = renderTableHtml(result.columns, result.rows);
   } else if (tab.view === "json") {
     if (activeChartInstance) {
       activeChartInstance.destroy();
       activeChartInstance = null;
     }
-    body.innerHTML = renderJsonHtml(tab.result.columns, tab.result.rows);
+    body.innerHTML = renderJsonHtml(result.columns, result.rows);
   } else {
-    renderChartView(tab);
+    renderChartView(tab, result);
   }
   applyResultsFind();
 }
@@ -2253,9 +2341,9 @@ function isNumericColumn(rows, colIndex) {
   return numCount / sample.length > 0.7;
 }
 
-function populateChartConfigOptions(tab) {
-  const columns = tab.result.columns;
-  const rows = tab.result.rows;
+function populateChartConfigOptions(tab, result) {
+  const columns = result.columns;
+  const rows = result.rows;
   const numericFlags = columns.map((c, i) => isNumericColumn(rows, i));
 
   if (!tab.chartConfig) {
@@ -2293,7 +2381,7 @@ function chartThemeColors() {
   };
 }
 
-function renderChartView(tab) {
+function renderChartView(tab, result) {
   const body = document.getElementById("resultsBody");
 
   if (activeChartInstance) {
@@ -2301,12 +2389,12 @@ function renderChartView(tab) {
     activeChartInstance = null;
   }
 
-  if (tab.result.rows.length === 0) {
+  if (result.rows.length === 0) {
     body.innerHTML = `<div class="empty-state">${icon("inbox", 28)}<div class="title">No rows to chart</div></div>`;
     return;
   }
 
-  populateChartConfigOptions(tab);
+  populateChartConfigOptions(tab, result);
   body.innerHTML = '<div class="chart-canvas-wrap"><canvas id="chartCanvas"></canvas></div>';
 
   const { type, xCol, yCols } = tab.chartConfig;
@@ -2315,8 +2403,8 @@ function renderChartView(tab) {
     return;
   }
 
-  const columns = tab.result.columns;
-  const rows = tab.result.rows;
+  const columns = result.columns;
+  const rows = result.rows;
   const xIndex = columns.indexOf(xCol);
   const labels = rows.map((r) => (r[xIndex] === null || r[xIndex] === undefined ? "" : String(r[xIndex])));
   const isPie = type === "pie" || type === "doughnut";
@@ -2379,21 +2467,21 @@ document.getElementById("chartTypeSelect").addEventListener("change", (e) => {
   const tab = getActiveTab();
   if (!tab || !tab.chartConfig) return;
   tab.chartConfig.type = e.target.value;
-  renderChartView(tab);
+  renderChartView(tab, getActiveResultData(tab));
   persistSession();
 });
 document.getElementById("chartXSelect").addEventListener("change", (e) => {
   const tab = getActiveTab();
   if (!tab || !tab.chartConfig) return;
   tab.chartConfig.xCol = e.target.value;
-  renderChartView(tab);
+  renderChartView(tab, getActiveResultData(tab));
   persistSession();
 });
 document.getElementById("chartYSelect").addEventListener("change", (e) => {
   const tab = getActiveTab();
   if (!tab || !tab.chartConfig) return;
   tab.chartConfig.yCols = Array.from(e.target.selectedOptions).map((o) => o.value);
-  renderChartView(tab);
+  renderChartView(tab, getActiveResultData(tab));
   persistSession();
 });
 
@@ -2447,10 +2535,19 @@ async function copyTextToClipboard(text) {
   document.body.removeChild(ta);
 }
 
+// For a multi-statement tab, distinguishes "products.csv" from
+// "products-result-2.csv" rather than exporting every sub-result under the
+// same generic tab-title filename.
+function resultExportBaseName(tab) {
+  if (tab.result && tab.result.multi) return `${tab.title}-result-${tab.activeResultIndex + 1}`;
+  return tab.title;
+}
+
 document.getElementById("copyResultBtn").addEventListener("click", async () => {
   const tab = getActiveTab();
-  if (!tab || !tab.result || tab.result.status !== "success") return;
-  const { columns, rows } = tab.result;
+  const result = getActiveResultData(tab);
+  if (!result || result.status !== "success") return;
+  const { columns, rows } = result;
   const text = tab.view === "json" ? JSON.stringify(rowsToObjects(columns, rows), null, 2) : buildCsv(columns, rows);
   const label = document.getElementById("copyResultLabel");
   try {
@@ -2463,14 +2560,16 @@ document.getElementById("copyResultBtn").addEventListener("click", async () => {
 
 document.getElementById("exportCsv").addEventListener("click", () => {
   const tab = getActiveTab();
-  if (!tab || !tab.result || tab.result.status !== "success") return;
-  downloadBlob(buildCsv(tab.result.columns, tab.result.rows), `${tab.title}.csv`, "text/csv");
+  const result = getActiveResultData(tab);
+  if (!result || result.status !== "success") return;
+  downloadBlob(buildCsv(result.columns, result.rows), `${resultExportBaseName(tab)}.csv`, "text/csv");
 });
 document.getElementById("exportJson").addEventListener("click", () => {
   const tab = getActiveTab();
-  if (!tab || !tab.result || tab.result.status !== "success") return;
-  const objs = rowsToObjects(tab.result.columns, tab.result.rows);
-  downloadBlob(JSON.stringify(objs, null, 2), `${tab.title}.json`, "application/json");
+  const result = getActiveResultData(tab);
+  if (!result || result.status !== "success") return;
+  const objs = rowsToObjects(result.columns, result.rows);
+  downloadBlob(JSON.stringify(objs, null, 2), `${resultExportBaseName(tab)}.json`, "application/json");
 });
 
 /* =========================================================================
@@ -3339,7 +3438,7 @@ erdViewport.addEventListener("mousedown", (e) => {
    call their real provider API once a key is saved via the settings
    gear (see AI PROVIDER KEYS MODAL above). Local lists whatever
    .gguf/.bin files have been uploaded via the server, stored
-   in data/models and tracked in SQLite. Selecting "+ Upload a local
+   in data/models and tracked in SQLite. Selecting "Upload a local
    model…" opens a file picker and streams the file to the server.
    ========================================================================= */
 const CHAT_MODEL_KEY = "querybench.chatmodel.v1";
@@ -3451,14 +3550,14 @@ async function loadCustomEndpointModels() {
     providers = await api("/ai-providers");
   } catch (err) {
     group.innerHTML = "";
-    group.appendChild(configureOpt("+ Configure custom endpoint…"));
+    group.appendChild(configureOpt("Configure custom endpoint…"));
     return;
   }
 
   const custom = providers.find((p) => p.provider === "custom");
   if (!custom || !custom.configured) {
     group.innerHTML = "";
-    group.appendChild(configureOpt("+ Configure custom endpoint…"));
+    group.appendChild(configureOpt("Configure custom endpoint…"));
     return;
   }
 
@@ -3780,16 +3879,23 @@ function updateChatContextBar() {
   const lines = tab.query.split("\n").length;
   const conn = findConn(tab.connId);
   const target = conn ? `${conn.name} / ${tab.dbName || "no database"}` : "no connection";
+  const result = getActiveResultData(tab);
   let resultNote = "";
-  if (tab.result) {
-    resultNote = tab.result.status === "success" ? ` · last run: ${tab.result.rowCount} rows` : " · last run: failed";
+  if (result) {
+    const multiNote = tab.result.multi ? ` (result ${tab.activeResultIndex + 1}/${tab.result.results.length})` : "";
+    resultNote =
+      result.status === "success"
+        ? ` · last run: ${result.rowCount} rows${multiNote}`
+        : ` · last run: failed${multiNote}`;
   }
   label.textContent = `Attached: "${tab.title}" (${lines} line${lines === 1 ? "" : "s"}, ${target})${resultNote}`;
 }
 
 // Builds the (not displayed in the thread) system message carrying the
 // live query editor contents, computed fresh at send time so it's
-// never stale even mid-conversation.
+// never stale even mid-conversation. The full multi-statement text always
+// goes in, but the result summary describes whichever sub-result is
+// currently being looked at, matching the context bar above.
 function buildQueryContextMessage() {
   const tab = getActiveTab();
   if (!tab || !tab.query || !tab.query.trim()) return null;
@@ -3799,11 +3905,15 @@ function buildQueryContextMessage() {
     `Current tab: "${tab.title}". ` +
     `Target: ${conn ? `${conn.name} (${conn.type})` : "no connection selected"} / ${tab.dbName || "no database selected"}. ` +
     `Current SQL in the editor:\n\`\`\`sql\n${tab.query}\n\`\`\``;
-  if (tab.result) {
+  const result = getActiveResultData(tab);
+  if (result) {
+    const multiNote = tab.result.multi
+      ? ` This tab ran ${tab.result.results.length} statements; the following is statement ${tab.activeResultIndex + 1} (\`${result.sql}\`).`
+      : "";
     content +=
-      tab.result.status === "success"
-        ? `\n\nThe query was last run successfully, returning ${tab.result.rowCount} rows with columns: ${tab.result.columns.join(", ")}.`
-        : `\n\nThe query was last run and failed with this error: ${tab.result.message}`;
+      result.status === "success"
+        ? `\n\n${multiNote} It was last run successfully, returning ${result.rowCount} rows with columns: ${result.columns.join(", ")}.`
+        : `\n\n${multiNote} It was last run and failed with this error: ${result.message}`;
   }
   return { role: "system", content };
 }

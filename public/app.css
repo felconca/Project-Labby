@@ -1235,6 +1235,41 @@ kbd {
   padding: 7px 10px;
 }
 
+.result-sub-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 10px 0;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.result-sub-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 11.5px;
+  color: var(--text-low);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.result-sub-tab:hover {
+  color: var(--text-hi);
+}
+
+.result-sub-tab.is-active {
+  color: var(--text-hi);
+  border-bottom-color: var(--accent);
+  font-weight: 500;
+}
+
 .chart-config-bar {
   display: flex;
   align-items: flex-end;
