@@ -75,6 +75,7 @@ const ICONS = {
   check: '<polyline points="20 6 9 17 4 12"/>',
   diamond: '<path d="M12 2 2 12l10 10 10-10Z"/>',
   key: '<path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l1.8-1.8a1 1 0 0 0 0-1.4L18.7 4.3a1 1 0 0 0-1.4 0l-1.8 1.8a1 1 0 0 0 0 1.4Z"/><path d="m11.5 11.5-3-3"/><path d="m3 21 3.5-3.5"/><path d="m14 8-8 8"/><circle cx="5" cy="19" r="2"/>',
+  link: '<path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" y1="12" x2="16" y2="12"/>',
   keyword: '<path d="M21 6H3"/><path d="M15 12H3"/><path d="M17 18H3"/>',
   // Brand marks for connection types, drawn in the same stroke-based style
   // as the rest of the icon set so they sit naturally in the schema tree.
@@ -590,7 +591,7 @@ function closeTab(id) {
 // Save/Format/Clear/Run act on the current tab's content, so they need one
 // open. Open .sql and the connection selector are entry points that create
 // or target a tab themselves, so they stay usable even with none open.
-const TOOLBAR_BUTTON_IDS = ["runBtn", "formatBtn", "clearBtn", "saveFileBtn", "convertFabBtn"];
+const TOOLBAR_BUTTON_IDS = ["runBtn", "formatBtn", "clearBtn", "saveFileBtn", "convertFabBtn", "openErdBtn"];
 
 function updateSaveButtonLabel(tab) {
   const label = document.getElementById("saveFileLabel");
@@ -3079,6 +3080,261 @@ conversionOverlay.addEventListener("click", (e) => {
 });
 
 /* =========================================================================
+   ER DIAGRAM — table boxes (draggable) connected by FK lines (SVG), inside
+   a pannable/zoomable world. Pan and zoom are just one CSS transform on
+   #erdWorld, which contains both the table boxes and the SVG lines — so
+   panning/zooming never needs to recompute line coordinates, only dragging
+   an individual table does (since that changes its real position in world
+   space, not just the view onto it).
+   ========================================================================= */
+const ERD_BOX_WIDTH = 220;
+const ERD_HEADER_HEIGHT = 34;
+const ERD_ROW_HEIGHT = 22;
+const ERD_MAX_VISIBLE_ROWS = 10; // matches .erd-table-rows max-height (260px / 22px ≈ 11.8, round down for spacing)
+const ERD_COL_GAP_X = 60;
+const ERD_COL_GAP_Y = 40;
+
+let erdState = null; // { tables, foreignKeys, positions, zoom, panX, panY }
+
+function erdBoxHeight(table) {
+  return ERD_HEADER_HEIGHT + Math.min(table.columns.length, ERD_MAX_VISIBLE_ROWS) * ERD_ROW_HEIGHT;
+}
+
+function computeErdGridLayout(tables) {
+  const cols = Math.max(1, Math.ceil(Math.sqrt(tables.length)));
+  const colWidths = new Array(cols).fill(ERD_BOX_WIDTH);
+  const rowHeights = [];
+  const positions = {};
+
+  tables.forEach((t, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    rowHeights[row] = Math.max(rowHeights[row] || 0, erdBoxHeight(t));
+  });
+
+  tables.forEach((t, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    let x = 0;
+    for (let c = 0; c < col; c++) x += colWidths[c] + ERD_COL_GAP_X;
+    let y = 0;
+    for (let r = 0; r < row; r++) y += rowHeights[r] + ERD_COL_GAP_Y;
+    positions[t.name] = { x, y };
+  });
+
+  return positions;
+}
+
+function openErdModal() {
+  const tab = getActiveTab();
+  if (!tab) return;
+  const conn = findConn(tab.connId);
+  if (!conn) {
+    alert("Pick a connection for this tab first.");
+    return;
+  }
+  const database = tab.dbName;
+  if (!database) {
+    alert("Pick a database for this tab first.");
+    return;
+  }
+
+  document.getElementById("erdTitle").textContent = `ER diagram — ${conn.name} / ${database}`;
+  document.getElementById("erdStatus").textContent = "Loading…";
+  document.getElementById("erdLines").innerHTML = "";
+  document.querySelectorAll(".erd-table-box").forEach((el) => el.remove());
+  erdState = null;
+  document.getElementById("erdOverlay").classList.add("open");
+
+  api(`/connections/${conn.id}/databases/${encodeURIComponent(database)}/schema-diagram`)
+    .then((data) => {
+      if (data.tables.length === 0) {
+        document.getElementById("erdStatus").textContent = "No tables in this database.";
+        return;
+      }
+      erdState = {
+        tables: data.tables,
+        foreignKeys: data.foreignKeys,
+        positions: computeErdGridLayout(data.tables),
+        zoom: 1,
+        panX: 40,
+        panY: 40,
+      };
+      document.getElementById("erdStatus").textContent =
+        `${data.tables.length} table${data.tables.length === 1 ? "" : "s"} · ${data.foreignKeys.length} relationship${data.foreignKeys.length === 1 ? "" : "s"}`;
+      renderErdTables();
+      renderErdLines();
+      applyErdTransform();
+    })
+    .catch((err) => {
+      document.getElementById("erdStatus").textContent = "Error: " + err.message;
+    });
+}
+
+function closeErdModal() {
+  document.getElementById("erdOverlay").classList.remove("open");
+}
+
+function renderErdTables() {
+  const world = document.getElementById("erdWorld");
+  document.querySelectorAll(".erd-table-box").forEach((el) => el.remove());
+
+  erdState.tables.forEach((table) => {
+    const pos = erdState.positions[table.name];
+    const box = document.createElement("div");
+    box.className = "erd-table-box";
+    box.style.left = pos.x + "px";
+    box.style.top = pos.y + "px";
+    box.dataset.table = table.name;
+
+    const fkColumns = new Set(erdState.foreignKeys.filter((f) => f.fromTable === table.name).map((f) => f.fromColumn));
+
+    const rowsHtml = table.columns
+      .map((c) => {
+        let iconHtml = "";
+        if (c.isPrimaryKey) iconHtml = `<span class="erd-col-icon erd-col-pk">${icon("key", 10)}</span>`;
+        else if (fkColumns.has(c.name)) iconHtml = `<span class="erd-col-icon erd-col-fk">${icon("link", 10)}</span>`;
+        else iconHtml = `<span class="erd-col-icon"></span>`;
+        return `<div class="erd-col-row" data-column="${escapeHtml(c.name)}">
+          ${iconHtml}
+          <span class="erd-col-name">${escapeHtml(c.name)}</span>
+          <span class="erd-col-type">${escapeHtml(c.dataType)}</span>
+        </div>`;
+      })
+      .join("");
+
+    box.innerHTML = `
+      <div class="erd-table-header">${icon("table", 13)}<span>${escapeHtml(table.name)}</span></div>
+      <div class="erd-table-rows">${rowsHtml}</div>
+    `;
+    world.appendChild(box);
+
+    box.querySelector(".erd-table-header").addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const origX = erdState.positions[table.name].x;
+      const origY = erdState.positions[table.name].y;
+
+      function onMove(ev) {
+        const dx = (ev.clientX - startX) / erdState.zoom;
+        const dy = (ev.clientY - startY) / erdState.zoom;
+        erdState.positions[table.name] = { x: origX + dx, y: origY + dy };
+        box.style.left = erdState.positions[table.name].x + "px";
+        box.style.top = erdState.positions[table.name].y + "px";
+        renderErdLines();
+      }
+      function onUp() {
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+      }
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    });
+  });
+}
+
+// Connects each FK's source column row to the target table's matching
+// column row (or the target table's header if that column isn't visible,
+// e.g. scrolled out of a long column list) with a smooth curve.
+function renderErdLines() {
+  const svg = document.getElementById("erdLines");
+  const world = document.getElementById("erdWorld");
+  const worldRect = world.getBoundingClientRect();
+
+  function anchorPoint(tableName, columnName) {
+    const box = world.querySelector(`.erd-table-box[data-table="${CSS.escape(tableName)}"]`);
+    if (!box) return null;
+    const boxRect = box.getBoundingClientRect();
+    const rowEl = box.querySelector(`.erd-col-row[data-column="${CSS.escape(columnName)}"]`);
+    const targetRect = rowEl ? rowEl.getBoundingClientRect() : boxRect;
+    const y = (targetRect.top + targetRect.height / 2 - worldRect.top) / erdState.zoom;
+    const leftX = (boxRect.left - worldRect.left) / erdState.zoom;
+    const rightX = (boxRect.right - worldRect.left) / erdState.zoom;
+    return { leftX, rightX, y };
+  }
+
+  const paths = erdState.foreignKeys
+    .map((fk) => {
+      const from = anchorPoint(fk.fromTable, fk.fromColumn);
+      const to = anchorPoint(fk.toTable, fk.toColumn);
+      if (!from || !to) return "";
+      // Leave from whichever side of the source box is nearer the target, and
+      // arrive at the corresponding side of the target box.
+      const fromOnLeft = from.leftX < to.leftX;
+      const x1 = fromOnLeft ? from.rightX : from.leftX;
+      const x2 = fromOnLeft ? to.leftX : to.rightX;
+      const midX = (x1 + x2) / 2;
+      return `<path d="M ${x1} ${from.y} C ${midX} ${from.y}, ${midX} ${to.y}, ${x2} ${to.y}"
+                fill="none" stroke="var(--accent)" stroke-width="1.5" opacity="0.55" marker-end="url(#erdArrow)" />`;
+    })
+    .join("");
+
+  svg.innerHTML = `
+    <defs>
+      <marker id="erdArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)" opacity="0.7" />
+      </marker>
+    </defs>
+    ${paths}
+  `;
+}
+
+function applyErdTransform() {
+  document.getElementById("erdWorld").style.transform =
+    `translate(${erdState.panX}px, ${erdState.panY}px) scale(${erdState.zoom})`;
+  document.getElementById("erdZoomLabel").textContent = Math.round(erdState.zoom * 100) + "%";
+}
+
+function erdZoomBy(factor) {
+  if (!erdState) return;
+  erdState.zoom = Math.min(2.5, Math.max(0.3, erdState.zoom * factor));
+  applyErdTransform();
+}
+
+document.getElementById("openErdBtn").addEventListener("click", openErdModal);
+document.getElementById("closeErd").addEventListener("click", closeErdModal);
+const erdOverlay = document.getElementById("erdOverlay");
+erdOverlay.addEventListener("click", (e) => {
+  if (e.target === erdOverlay) closeErdModal();
+});
+document.getElementById("erdZoomIn").addEventListener("click", () => erdZoomBy(1.2));
+document.getElementById("erdZoomOut").addEventListener("click", () => erdZoomBy(1 / 1.2));
+document.getElementById("erdFit").addEventListener("click", () => {
+  if (!erdState) return;
+  erdState.zoom = 1;
+  erdState.panX = 40;
+  erdState.panY = 40;
+  applyErdTransform();
+});
+
+// Dragging the viewport background (not a table box) pans the whole world.
+const erdViewport = document.getElementById("erdViewport");
+erdViewport.addEventListener("mousedown", (e) => {
+  if (!erdState || e.target.closest(".erd-table-box")) return;
+  e.preventDefault();
+  erdViewport.classList.add("is-panning");
+  const startX = e.clientX;
+  const startY = e.clientY;
+  const origPanX = erdState.panX;
+  const origPanY = erdState.panY;
+
+  function onMove(ev) {
+    erdState.panX = origPanX + (ev.clientX - startX);
+    erdState.panY = origPanY + (ev.clientY - startY);
+    applyErdTransform();
+  }
+  function onUp() {
+    erdViewport.classList.remove("is-panning");
+    document.removeEventListener("mousemove", onMove);
+    document.removeEventListener("mouseup", onUp);
+  }
+  document.addEventListener("mousemove", onMove);
+  document.addEventListener("mouseup", onUp);
+});
+
+/* =========================================================================
    CHAT MODEL PICKER — Cursor-style Cloud/Local selector. Cloud models
    call their real provider API once a key is saved via the settings
    gear (see AI PROVIDER KEYS MODAL above). Local lists whatever
@@ -3106,8 +3362,8 @@ function updateChatModelUi(value) {
   const iconName = isLocal ? "cpu" : isCustom ? "server" : "cloud";
   document.getElementById("chatModelIcon").innerHTML = icon(iconName, 12);
   const hint = document.getElementById("chatModelHint");
-  if (isLocal) hint.textContent = "Runs locally (node-llama-cpp)";
-  else if (isCustom) hint.textContent = "Custom OpenAI-compatible endpoint";
+  if (isLocal) hint.textContent = "Runs locally";
+  else if (isCustom) hint.textContent = "OpenAI endpoint";
   else hint.textContent = "Cloud API";
 }
 
@@ -3137,7 +3393,7 @@ async function loadLocalModels() {
     }
     const uploadOpt = document.createElement("option");
     uploadOpt.value = "__upload_local__";
-    uploadOpt.textContent = "+ Upload a local model…";
+    uploadOpt.textContent = "Upload a local model…";
     group.appendChild(uploadOpt);
   } catch (err) {
     group.innerHTML = '<option value="" disabled>Could not load local models</option>';
@@ -3230,7 +3486,7 @@ async function loadCustomEndpointModels() {
     opt.textContent = "Could not reach endpoint";
     group.appendChild(opt);
   }
-  group.appendChild(configureOpt("+ Reconfigure endpoint…"));
+  group.appendChild(configureOpt("Reconfigure endpoint…"));
 }
 
 async function initChatModelPicker() {

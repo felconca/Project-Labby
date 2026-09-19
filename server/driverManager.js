@@ -25,6 +25,10 @@ async function listColumns(conn, database, table) {
   return getDriver(conn.type).listColumns(conn, database, table);
 }
 
+async function listForeignKeys(conn, database) {
+  return getDriver(conn.type).listForeignKeys(conn, database);
+}
+
 async function runQuery(conn, database, sql, maxRows) {
   return getDriver(conn.type).runQuery(conn, database, sql, maxRows);
 }
@@ -33,4 +37,4 @@ function closePools(conn) {
   getDriver(conn.type).closePools(conn.id);
 }
 
-module.exports = { testConnection, listDatabases, listTables, listColumns, runQuery, closePools };
+module.exports = { testConnection, listDatabases, listTables, listColumns, listForeignKeys, runQuery, closePools };

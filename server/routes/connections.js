@@ -198,4 +198,27 @@ router.get("/:id/databases/:database/tables/:table/columns", async (req, res) =>
   }
 });
 
+// GET /api/connections/:id/databases/:database/schema-diagram — everything
+// the ER diagram needs in one round trip: every table's columns plus every
+// FK relationship in the database, rather than the frontend making a
+// separate columns request per table.
+router.get("/:id/databases/:database/schema-diagram", async (req, res) => {
+  const row = loadConnectionOr404(req, res);
+  if (!row) return;
+  const conn = toInternal(row);
+  try {
+    const tableNames = await driverManager.listTables(conn, req.params.database);
+    const tables = await Promise.all(
+      tableNames.map(async (name) => ({
+        name,
+        columns: await driverManager.listColumns(conn, req.params.database, name),
+      })),
+    );
+    const foreignKeys = await driverManager.listForeignKeys(conn, req.params.database);
+    res.json({ tables, foreignKeys });
+  } catch (err) {
+    res.status(502).json({ error: `Could not load schema diagram: ${err.message}` });
+  }
+});
+
 module.exports = router;

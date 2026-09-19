@@ -80,6 +80,18 @@
                                 <path d="M15 8V2" />
                                 <path d="M18 8v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z" />
                             </svg></span><b id="tabTargetLabel">No tab open</b>
+                        <button class="btn btn-sm btn-ghost" id="openErdBtn" title="View ER diagram for this database"
+                            style="margin-left:8px;"><svg class="icon" width="13" height="13" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <rect x="3" y="3" width="7" height="7" rx="1" />
+                                <rect x="14" y="3" width="7" height="7" rx="1" />
+                                <rect x="14" y="14" width="7" height="7" rx="1" />
+                                <rect x="3" y="14" width="7" height="7" rx="1" />
+                                <path d="M10 6.5h4" />
+                                <path d="M17.5 10v4" />
+                                <path d="M10 17.5h4" />
+                            </svg>Diagram</button>
                     </div>
                     <div class="toolbar-spacer"></div>
                     <input type="file" id="openFileInput" accept=".sql,.txt" style="display:none">
@@ -586,6 +598,33 @@
                         <line x1="12" y1="15" x2="12" y2="3" />
                     </svg>Export</button>
                 <button class="btn btn-ghost" id="closeConversion2">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ ER DIAGRAM MODAL ============ -->
+    <div class="modal-overlay" id="erdOverlay">
+        <div class="modal modal-fullscreen">
+            <div class="modal-head">
+                <span id="erdTitle">ER diagram</span>
+                <span class="x" id="closeErd"><svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 6 6 18" />
+                        <path d="m6 6 12 12" />
+                    </svg></span>
+            </div>
+            <div class="erd-toolbar">
+                <button type="button" class="btn btn-sm btn-ghost" id="erdZoomOut" title="Zoom out">−</button>
+                <span class="erd-zoom-label" id="erdZoomLabel">100%</span>
+                <button type="button" class="btn btn-sm btn-ghost" id="erdZoomIn" title="Zoom in">+</button>
+                <button type="button" class="btn btn-sm btn-ghost" id="erdFit" title="Reset pan and zoom">Fit</button>
+                <span class="erd-toolbar-spacer"></span>
+                <span class="erd-status" id="erdStatus"></span>
+            </div>
+            <div class="erd-viewport" id="erdViewport">
+                <div class="erd-world" id="erdWorld">
+                    <svg class="erd-lines" id="erdLines"></svg>
+                </div>
             </div>
         </div>
     </div>

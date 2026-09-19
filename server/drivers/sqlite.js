@@ -65,6 +65,22 @@ async function listColumns(conn, database, table) {
   }));
 }
 
+// SQLite has no single system catalog for foreign keys across the whole
+// database — PRAGMA foreign_key_list only reports one table at a time —
+// so this loops over every table and merges the results.
+async function listForeignKeys(conn, database) {
+  const db = getDb(conn);
+  const tables = await listTables(conn, database);
+  const fks = [];
+  for (const table of tables) {
+    const rows = db.prepare(`PRAGMA foreign_key_list("${table}")`).all();
+    rows.forEach((r) => {
+      fks.push({ fromTable: table, fromColumn: r.from, toTable: r.table, toColumn: r.to });
+    });
+  }
+  return fks;
+}
+
 async function runQuery(conn, database, sql, maxRows) {
   const db = getDb(conn);
   const trimmed = sql.trim().replace(/;+\s*$/, "");
@@ -93,4 +109,4 @@ async function runQuery(conn, database, sql, maxRows) {
   };
 }
 
-module.exports = { testConnection, listDatabases, listTables, listColumns, runQuery, closePools };
+module.exports = { testConnection, listDatabases, listTables, listColumns, listForeignKeys, runQuery, closePools };
