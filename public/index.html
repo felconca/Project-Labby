@@ -12,6 +12,7 @@
 <body>
     <div class="app">
 
+
         <!-- ============ TOP BAR ============ -->
         <div class="topbar">
 
@@ -239,6 +240,14 @@
                                     <path d="M8 3H7a2 2 0 0 0-2 2v3a2 2 0 0 1-2 2 2 2 0 0 1 2 2v3a2 2 0 0 0 2 2h1" />
                                     <path d="M16 3h1a2 2 0 0 1 2 2v3a2 2 0 0 0 2 2 2 2 0 0 0-2 2v3a2 2 0 0 1-2 2h-1" />
                                 </svg>JSON</div>
+                            <div class="view-btn" data-view="chart" id="viewChartBtn"><svg class="icon" width="12"
+                                    height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 3v18h18" />
+                                    <path d="M18 17V9" />
+                                    <path d="M13 17V5" />
+                                    <path d="M8 17v-3" />
+                                </svg>Chart</div>
                         </div>
                         <div class="status-pill" id="statusPill"><span class="sw"></span><span id="statusText">Not run
                                 yet</span></div>
@@ -279,6 +288,27 @@
                                 <path d="M18 6 6 18" />
                                 <path d="m6 6 12 12" />
                             </svg></span>
+                    </div>
+                    <div class="chart-config-bar" id="chartConfigBar" style="display:none;">
+                        <div class="chart-config-field">
+                            <label>Type</label>
+                            <select id="chartTypeSelect">
+                                <option value="bar">Bar</option>
+                                <option value="line">Line</option>
+                                <option value="pie">Pie</option>
+                                <option value="doughnut">Doughnut</option>
+                                <option value="scatter">Scatter</option>
+                            </select>
+                        </div>
+                        <div class="chart-config-field">
+                            <label>X axis</label>
+                            <select id="chartXSelect"></select>
+                        </div>
+                        <div class="chart-config-field chart-config-field-grow">
+                            <label>Y axis <span class="chart-config-hint">(ctrl/cmd-click for more than
+                                    one)</span></label>
+                            <select id="chartYSelect" multiple></select>
+                        </div>
                     </div>
                     <div class="results-body" id="resultsBody"></div>
                 </div>
@@ -427,37 +457,56 @@
                                 style="background:var(--mysql)"></span>MySQL</div>
                         <div class="type-option" data-type="postgres"><span class="swatch"
                                 style="background:var(--postgres)"></span>PostgreSQL</div>
+                        <div class="type-option" data-type="sqlite"><span class="swatch"
+                                style="background:var(--sqlite)"></span>SQLite</div>
                     </div>
                 </div>
                 <div class="field">
                     <label>Connection name</label>
                     <input type="text" id="newConnName" placeholder="e.g. staging-mysql">
                 </div>
-                <div class="field-row">
-                    <div class="field">
-                        <label>Host</label>
-                        <input type="text" id="newConnHost" placeholder="127.0.0.1">
+                <div id="networkFields">
+                    <div class="field-row">
+                        <div class="field">
+                            <label>Host</label>
+                            <input type="text" id="newConnHost" placeholder="127.0.0.1">
+                        </div>
+                        <div class="field" style="max-width:100px;">
+                            <label>Port</label>
+                            <input type="text" id="newConnPort" placeholder="3306">
+                        </div>
                     </div>
-                    <div class="field" style="max-width:100px;">
-                        <label>Port</label>
-                        <input type="text" id="newConnPort" placeholder="3306">
+                    <div class="field-row">
+                        <div class="field">
+                            <label>Username</label>
+                            <input type="text" id="newConnUser" placeholder="root">
+                        </div>
+                        <div class="field">
+                            <label>Password</label>
+                            <input type="password" id="newConnPass" placeholder="••••••••">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Default database (optional)</label>
+                        <input type="text" id="newConnDb" placeholder="e.g. wgcentralsupply">
+                        <div style="font-size:11px; color:var(--text-low); margin-top:4px;">Postgres needs this to list
+                            other databases (usually "postgres"). Optional for MySQL.</div>
                     </div>
                 </div>
-                <div class="field-row">
-                    <div class="field">
-                        <label>Username</label>
-                        <input type="text" id="newConnUser" placeholder="root">
-                    </div>
-                    <div class="field">
-                        <label>Password</label>
-                        <input type="password" id="newConnPass" placeholder="••••••••">
-                    </div>
-                </div>
-                <div class="field">
-                    <label>Default database (optional)</label>
-                    <input type="text" id="newConnDb" placeholder="e.g. wgcentralsupply">
-                    <div style="font-size:11px; color:var(--text-low); margin-top:4px;">Postgres needs this to list
-                        other databases (usually "postgres"). Optional for MySQL.</div>
+                <div class="field" id="sqliteField" style="display:none;">
+                    <label>Database file</label>
+                    <input type="file" id="newConnSqliteInput" accept=".sqlite,.sqlite3,.db" style="display:none;">
+                    <button type="button" class="btn" id="newConnSqliteBtn" style="width:100%; justify-content:center;">
+                        <svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                        </svg>
+                        <span id="newConnSqliteLabel">Choose a .sqlite / .db file…</span>
+                    </button>
+                    <div style="font-size:11px; color:var(--text-low); margin-top:4px;">Uploaded to the server so it can
+                        be queried directly — the file itself never touches your browser's storage.</div>
                 </div>
                 <div id="modalMessage" style="display:none; font-size:12px; padding:8px 10px; border-radius:6px;"></div>
             </div>
@@ -541,6 +590,7 @@
         </div>
     </div>
 
+    <script src="vendor/chart.umd.min.js"></script>
     <script src="app.js"></script>
 </body>
 

@@ -1,8 +1,8 @@
-const express = require('express');
-const crypto = require('crypto');
-const db = require('../db');
-const { decrypt } = require('../crypto');
-const driverManager = require('../driverManager');
+const express = require("express");
+const crypto = require("crypto");
+const db = require("../db");
+const { decrypt } = require("../crypto");
+const driverManager = require("../driverManager");
 
 const router = express.Router();
 
@@ -16,16 +16,19 @@ function toInternal(row) {
     host: row.host,
     port: row.port,
     username: row.username,
-    password: decrypt(row.password_encrypted),
+    password: row.password_encrypted ? decrypt(row.password_encrypted) : "",
     defaultDatabase: row.default_database,
+    filePath: row.file_path,
   };
 }
 
 function recordHistory({ connRow, database, sql, status, errorMessage, rowCount, ms }) {
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO history (id, connection_id, connection_name, connection_type, database_name, query_text, status, error_message, row_count, duration_ms)
     VALUES (@id, @connection_id, @connection_name, @connection_type, @database_name, @query_text, @status, @error_message, @row_count, @duration_ms)
-  `).run({
+  `,
+  ).run({
     id: crypto.randomUUID(),
     connection_id: connRow ? connRow.id : null,
     connection_name: connRow ? connRow.name : null,
@@ -40,31 +43,33 @@ function recordHistory({ connRow, database, sql, status, errorMessage, rowCount,
 }
 
 // POST /api/query  { connectionId, database, sql }
-router.post('/', async (req, res) => {
+router.post("/", async (req, res) => {
   const { connectionId, database, sql } = req.body;
 
   if (!sql || !sql.trim()) {
-    return res.status(400).json({ status: 'error', message: 'Query text is empty.' });
+    return res.status(400).json({ status: "error", message: "Query text is empty." });
   }
   if (!connectionId) {
-    return res.status(400).json({ status: 'error', message: 'No connection selected.' });
+    return res.status(400).json({ status: "error", message: "No connection selected." });
   }
 
-  const connRow = db.prepare('SELECT * FROM connections WHERE id = ?').get(connectionId);
+  const connRow = db.prepare("SELECT * FROM connections WHERE id = ?").get(connectionId);
   if (!connRow) {
-    return res.status(404).json({ status: 'error', message: `No connection with id "${connectionId}".` });
+    return res.status(404).json({ status: "error", message: `No connection with id "${connectionId}".` });
   }
 
   try {
     const result = await driverManager.runQuery(toInternal(connRow), database, sql, MAX_ROWS);
     recordHistory({
-      connRow, database, sql,
-      status: 'success',
+      connRow,
+      database,
+      sql,
+      status: "success",
       rowCount: result.rowCount,
       ms: result.ms,
     });
     res.json({
-      status: 'success',
+      status: "success",
       columns: result.columns,
       rows: result.rows,
       rowCount: result.rowCount,
@@ -72,8 +77,8 @@ router.post('/', async (req, res) => {
       ms: result.ms,
     });
   } catch (err) {
-    recordHistory({ connRow, database, sql, status: 'error', errorMessage: err.message });
-    res.status(400).json({ status: 'error', message: err.message });
+    recordHistory({ connRow, database, sql, status: "error", errorMessage: err.message });
+    res.status(400).json({ status: "error", message: err.message });
   }
 });
 

@@ -1,9 +1,11 @@
-const mysqlDriver = require('./drivers/mysql');
-const postgresDriver = require('./drivers/postgres');
+const mysqlDriver = require("./drivers/mysql");
+const postgresDriver = require("./drivers/postgres");
+const sqliteDriver = require("./drivers/sqlite");
 
 function getDriver(type) {
-  if (type === 'mysql') return mysqlDriver;
-  if (type === 'postgres') return postgresDriver;
+  if (type === "mysql") return mysqlDriver;
+  if (type === "postgres") return postgresDriver;
+  if (type === "sqlite") return sqliteDriver;
   throw new Error(`Unsupported connection type: ${type}`);
 }
 

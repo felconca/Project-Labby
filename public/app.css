@@ -21,6 +21,7 @@
   --error-soft: rgba(220, 38, 38, 0.09);
   --mysql: #2563eb;
   --postgres: #7c3aed;
+  --sqlite: #0f766e;
   --kw: #2563eb;
   --str: #b45309;
   --num: #0f766e;
@@ -52,6 +53,7 @@ html[data-theme="dark"] {
   --error-soft: rgba(248, 113, 113, 0.14);
   --mysql: #60a5fa;
   --postgres: #a78bfa;
+  --sqlite: #2dd4bf;
   --kw: #60a5fa;
   --str: #fbbf24;
   --num: #2dd4bf;
@@ -642,6 +644,10 @@ button {
   color: var(--postgres);
 }
 
+.icon-conn-sqlite {
+  color: var(--sqlite);
+}
+
 .icon-db {
   color: var(--text-low);
 }
@@ -1227,6 +1233,64 @@ kbd {
   border-bottom: 1px solid var(--border);
   box-shadow: none;
   padding: 7px 10px;
+}
+
+.chart-config-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-sunken);
+  flex-shrink: 0;
+}
+
+.chart-config-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chart-config-field-grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.chart-config-field label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-low);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.chart-config-hint {
+  text-transform: none;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--text-low);
+}
+
+.chart-config-field select {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-hi);
+  padding: 5px 7px;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.chart-config-field select[multiple] {
+  min-height: 30px;
+  max-height: 60px;
+}
+
+.chart-canvas-wrap {
+  position: relative;
+  height: 100%;
+  padding: 16px;
+  box-sizing: border-box;
 }
 
 .find-bar-icon {

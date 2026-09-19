@@ -13,12 +13,13 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS connections (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    type TEXT NOT NULL CHECK (type IN ('mysql', 'postgres')),
-    host TEXT NOT NULL,
-    port INTEGER NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('mysql', 'postgres', 'sqlite')),
+    host TEXT,
+    port INTEGER,
     username TEXT,
     password_encrypted TEXT,
     default_database TEXT,
+    file_path TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -73,6 +74,31 @@ if (aiProvidersColumns.length > 0 && !hasBaseUrl) {
     INSERT INTO ai_providers (provider, api_key_encrypted, updated_at)
       SELECT provider, api_key_encrypted, updated_at FROM ai_providers_old;
     DROP TABLE ai_providers_old;
+  `);
+}
+
+// Same situation for connections: older installs have NOT NULL host/port,
+// no file_path, and a CHECK constraint that doesn't allow 'sqlite'.
+const connectionsColumns = db.prepare("PRAGMA table_info(connections)").all();
+const hasFilePath = connectionsColumns.some((c) => c.name === "file_path");
+if (connectionsColumns.length > 0 && !hasFilePath) {
+  db.exec(`
+    ALTER TABLE connections RENAME TO connections_old;
+    CREATE TABLE connections (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL CHECK (type IN ('mysql', 'postgres', 'sqlite')),
+      host TEXT,
+      port INTEGER,
+      username TEXT,
+      password_encrypted TEXT,
+      default_database TEXT,
+      file_path TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    INSERT INTO connections (id, name, type, host, port, username, password_encrypted, default_database, created_at)
+      SELECT id, name, type, host, port, username, password_encrypted, default_database, created_at FROM connections_old;
+    DROP TABLE connections_old;
   `);
 }
 

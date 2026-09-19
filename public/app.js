@@ -104,6 +104,7 @@ function icon(name, size, extraClass) {
 function dbLogo(type, size) {
   if (type === "postgres") return icon("postgresLogo", size);
   if (type === "mysql" || type === "mariadb") return icon("mysqlLogo", size);
+  if (type === "sqlite") return icon("database", size);
   return icon("server", size);
 }
 
@@ -2107,16 +2108,26 @@ function renderResults(tab) {
   const copyBtn = document.getElementById("copyResultBtn");
   const exportCsvBtn = document.getElementById("exportCsv");
   const exportJsonBtn = document.getElementById("exportJson");
+  const chartConfigBar = document.getElementById("chartConfigBar");
 
   document.getElementById("viewTableBtn").classList.toggle("is-active", tab.view === "table");
   document.getElementById("viewJsonBtn").classList.toggle("is-active", tab.view === "json");
+  document.getElementById("viewChartBtn").classList.toggle("is-active", tab.view === "chart");
   document.getElementById("copyResultLabel").textContent = tab.view === "json" ? "Copy JSON" : "Copy CSV";
+  chartConfigBar.style.display =
+    tab.view === "chart" && tab.result && tab.result.status === "success" && tab.result.rows.length > 0
+      ? "flex"
+      : "none";
 
   if (!tab.result) {
     setStatus("idle", "Not run yet");
     copyBtn.disabled = true;
     exportCsvBtn.disabled = true;
     exportJsonBtn.disabled = true;
+    if (activeChartInstance) {
+      activeChartInstance.destroy();
+      activeChartInstance = null;
+    }
     body.innerHTML = `<div class="empty-state">
 ${icon("inbox", 30)}
 <div class="title">No results yet</div>
@@ -2131,6 +2142,10 @@ ${icon("inbox", 30)}
     copyBtn.disabled = true;
     exportCsvBtn.disabled = true;
     exportJsonBtn.disabled = true;
+    if (activeChartInstance) {
+      activeChartInstance.destroy();
+      activeChartInstance = null;
+    }
     body.innerHTML = `<div class="error-block"><div class="err-title">Query not executed</div>${escapeHtml(tab.result.message)}</div>`;
     applyResultsFind();
     return;
@@ -2143,9 +2158,19 @@ ${icon("inbox", 30)}
   exportJsonBtn.disabled = false;
 
   if (tab.view === "table") {
+    if (activeChartInstance) {
+      activeChartInstance.destroy();
+      activeChartInstance = null;
+    }
     body.innerHTML = renderTableHtml(tab.result.columns, tab.result.rows);
-  } else {
+  } else if (tab.view === "json") {
+    if (activeChartInstance) {
+      activeChartInstance.destroy();
+      activeChartInstance = null;
+    }
     body.innerHTML = renderJsonHtml(tab.result.columns, tab.result.rows);
+  } else {
+    renderChartView(tab);
   }
   applyResultsFind();
 }
@@ -2199,6 +2224,178 @@ function renderJsonHtml(columns, rows) {
   return `<pre class="json-view">${colored}</pre>`;
 }
 
+/* =========================================================================
+   RESULT CHARTING — Redash-style "pick a chart type and columns" view for
+   the current result set, rendered with a self-hosted Chart.js build
+   (public/vendor/chart.umd.min.js — vendored from the chart.js npm package
+   rather than pulled from a CDN, so this keeps working offline). The chart
+   config (type + axis columns) is remembered per tab, same as everything
+   else tab-scoped in this app.
+   ========================================================================= */
+let activeChartInstance = null;
+const CHART_PALETTE = ["#2563eb", "#dc2626", "#0f766e", "#7c3aed", "#d97706", "#059669", "#db2777", "#4f46e5"];
+
+// Heuristic, not a real type system — the query result is just raw values,
+// so a column counts as "numeric" if most of its sampled values are numbers
+// OR numeric-looking strings. That second case matters a lot in practice:
+// MySQL's DECIMAL/NUMERIC columns (prices, totals, anything money-shaped)
+// come back from the driver as strings like "249.99", not JS numbers.
+function isNumericColumn(rows, colIndex) {
+  if (rows.length === 0) return false;
+  const sample = rows.slice(0, 20);
+  const numCount = sample.filter((r) => {
+    const v = r[colIndex];
+    if (typeof v === "number") return true;
+    if (typeof v === "string" && v.trim() !== "" && !isNaN(Number(v))) return true;
+    return false;
+  }).length;
+  return numCount / sample.length > 0.7;
+}
+
+function populateChartConfigOptions(tab) {
+  const columns = tab.result.columns;
+  const rows = tab.result.rows;
+  const numericFlags = columns.map((c, i) => isNumericColumn(rows, i));
+
+  if (!tab.chartConfig) {
+    const firstNonNumeric = columns.find((c, i) => !numericFlags[i]);
+    const firstNumeric = columns.find((c, i) => numericFlags[i]);
+    tab.chartConfig = {
+      type: "bar",
+      xCol: firstNonNumeric || columns[0],
+      yCols: firstNumeric ? [firstNumeric] : [],
+    };
+  }
+
+  const xSelect = document.getElementById("chartXSelect");
+  const ySelect = document.getElementById("chartYSelect");
+
+  xSelect.innerHTML = columns.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+  xSelect.value = tab.chartConfig.xCol;
+
+  ySelect.innerHTML = columns
+    .map((c, i) => `<option value="${escapeHtml(c)}"${numericFlags[i] ? "" : " disabled"}>${escapeHtml(c)}</option>`)
+    .join("");
+  Array.from(ySelect.options).forEach((opt) => {
+    opt.selected = tab.chartConfig.yCols.includes(opt.value);
+  });
+
+  document.getElementById("chartTypeSelect").value = tab.chartConfig.type;
+}
+
+function chartThemeColors() {
+  const theme = document.documentElement.getAttribute("data-theme");
+  const isDark = theme === "dark" || (theme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  return {
+    grid: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+    text: isDark ? "#c7ccd6" : "#4b5262",
+  };
+}
+
+function renderChartView(tab) {
+  const body = document.getElementById("resultsBody");
+
+  if (activeChartInstance) {
+    activeChartInstance.destroy();
+    activeChartInstance = null;
+  }
+
+  if (tab.result.rows.length === 0) {
+    body.innerHTML = `<div class="empty-state">${icon("inbox", 28)}<div class="title">No rows to chart</div></div>`;
+    return;
+  }
+
+  populateChartConfigOptions(tab);
+  body.innerHTML = '<div class="chart-canvas-wrap"><canvas id="chartCanvas"></canvas></div>';
+
+  const { type, xCol, yCols } = tab.chartConfig;
+  if (!xCol || yCols.length === 0) {
+    body.innerHTML = `<div class="empty-state"><div class="title">Pick an X and at least one Y column above</div></div>`;
+    return;
+  }
+
+  const columns = tab.result.columns;
+  const rows = tab.result.rows;
+  const xIndex = columns.indexOf(xCol);
+  const labels = rows.map((r) => (r[xIndex] === null || r[xIndex] === undefined ? "" : String(r[xIndex])));
+  const isPie = type === "pie" || type === "doughnut";
+  const colors = chartThemeColors();
+
+  let datasets;
+  if (isPie) {
+    // A pie/doughnut can only sensibly show one series — use the first Y column picked.
+    const yIndex = columns.indexOf(yCols[0]);
+    datasets = [
+      {
+        label: yCols[0],
+        data: rows.map((r) => Number(r[yIndex]) || 0),
+        backgroundColor: labels.map((_, i) => CHART_PALETTE[i % CHART_PALETTE.length]),
+      },
+    ];
+  } else if (type === "scatter") {
+    const yIndex = columns.indexOf(yCols[0]);
+    datasets = [
+      {
+        label: yCols[0],
+        data: rows.map((r) => ({ x: Number(r[xIndex]) || 0, y: Number(r[yIndex]) || 0 })),
+        backgroundColor: CHART_PALETTE[0],
+      },
+    ];
+  } else {
+    datasets = yCols.map((yCol, i) => {
+      const yIndex = columns.indexOf(yCol);
+      return {
+        label: yCol,
+        data: rows.map((r) => Number(r[yIndex]) || 0),
+        backgroundColor: type === "bar" ? CHART_PALETTE[i % CHART_PALETTE.length] : "transparent",
+        borderColor: CHART_PALETTE[i % CHART_PALETTE.length],
+        tension: type === "line" ? 0.25 : 0,
+      };
+    });
+  }
+
+  const ctx = document.getElementById("chartCanvas").getContext("2d");
+  activeChartInstance = new Chart(ctx, {
+    type: type,
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: datasets.length > 1 || isPie, labels: { color: colors.text } },
+      },
+      scales: isPie
+        ? {}
+        : {
+            x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+            y: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+          },
+    },
+  });
+}
+
+document.getElementById("chartTypeSelect").addEventListener("change", (e) => {
+  const tab = getActiveTab();
+  if (!tab || !tab.chartConfig) return;
+  tab.chartConfig.type = e.target.value;
+  renderChartView(tab);
+  persistSession();
+});
+document.getElementById("chartXSelect").addEventListener("change", (e) => {
+  const tab = getActiveTab();
+  if (!tab || !tab.chartConfig) return;
+  tab.chartConfig.xCol = e.target.value;
+  renderChartView(tab);
+  persistSession();
+});
+document.getElementById("chartYSelect").addEventListener("change", (e) => {
+  const tab = getActiveTab();
+  if (!tab || !tab.chartConfig) return;
+  tab.chartConfig.yCols = Array.from(e.target.selectedOptions).map((o) => o.value);
+  renderChartView(tab);
+  persistSession();
+});
+
 document.getElementById("viewTableBtn").addEventListener("click", () => {
   const tab = getActiveTab();
   if (!tab) return;
@@ -2210,6 +2407,13 @@ document.getElementById("viewJsonBtn").addEventListener("click", () => {
   const tab = getActiveTab();
   if (!tab) return;
   tab.view = "json";
+  renderResults(tab);
+  persistSession();
+});
+document.getElementById("viewChartBtn").addEventListener("click", () => {
+  const tab = getActiveTab();
+  if (!tab) return;
+  tab.view = "chart";
   renderResults(tab);
   persistSession();
 });
@@ -2368,6 +2572,7 @@ document.getElementById("clearAllHistory").addEventListener("click", async () =>
    NEW CONNECTION MODAL
    ========================================================================= */
 let modalSelectedType = "mysql";
+let sqliteUploadedPath = null;
 const overlay = document.getElementById("modalOverlay");
 function showModalMessage(text, kind) {
   const box = document.getElementById("modalMessage");
@@ -2382,8 +2587,14 @@ function clearModalMessage() {
   box.style.display = "none";
   box.textContent = "";
 }
+function resetSqliteUploadField() {
+  sqliteUploadedPath = null;
+  document.getElementById("newConnSqliteLabel").textContent = "Choose a .sqlite / .db file…";
+  document.getElementById("newConnSqliteInput").value = "";
+}
 function openModal() {
   clearModalMessage();
+  resetSqliteUploadField();
   overlay.classList.add("open");
 }
 function closeModalFn() {
@@ -2396,12 +2607,43 @@ overlay.addEventListener("click", (e) => {
   if (e.target === overlay) closeModalFn();
 });
 
+document.getElementById("newConnSqliteBtn").addEventListener("click", () => {
+  document.getElementById("newConnSqliteInput").click();
+});
+document.getElementById("newConnSqliteInput").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const label = document.getElementById("newConnSqliteLabel");
+  label.textContent = `Uploading ${file.name}…`;
+  const formData = new FormData();
+  formData.append("file", file);
+  try {
+    // Not using the api() helper here — it always sets a JSON content type,
+    // which would break the multipart upload.
+    const res = await fetch("/api/connections/upload-sqlite", { method: "POST", body: formData });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || `Upload failed (${res.status})`);
+    sqliteUploadedPath = body.filePath;
+    label.textContent = `${file.name} (${formatBytes(body.sizeBytes)}) — uploaded`;
+    if (!document.getElementById("newConnName").value.trim()) {
+      document.getElementById("newConnName").value = file.name.replace(/\.(sqlite3?|db)$/i, "");
+    }
+  } catch (err) {
+    sqliteUploadedPath = null;
+    label.textContent = "Choose a .sqlite / .db file…";
+    showModalMessage("Could not upload file: " + err.message, "error");
+  }
+});
+
 document.querySelectorAll(".type-option").forEach((opt) => {
   opt.addEventListener("click", () => {
     document.querySelectorAll(".type-option").forEach((o) => o.classList.remove("selected"));
     opt.classList.add("selected");
     modalSelectedType = opt.dataset.type;
     document.getElementById("newConnPort").placeholder = modalSelectedType === "mysql" ? "3306" : "5432";
+    const isSqlite = modalSelectedType === "sqlite";
+    document.getElementById("networkFields").style.display = isSqlite ? "none" : "block";
+    document.getElementById("sqliteField").style.display = isSqlite ? "block" : "none";
   });
 });
 
@@ -2414,14 +2656,20 @@ function readModalForm() {
     username: document.getElementById("newConnUser").value.trim(),
     password: document.getElementById("newConnPass").value,
     defaultDatabase: document.getElementById("newConnDb").value.trim() || null,
+    filePath: sqliteUploadedPath,
   };
 }
 
 document.getElementById("testConn").addEventListener("click", async () => {
   const btn = document.getElementById("testConn");
   const body = readModalForm();
-  if (!body.name || !body.host) {
-    showModalMessage("Fill in at least a name and host before testing.", "error");
+  if (!body.name || (body.type === "sqlite" ? !body.filePath : !body.host)) {
+    showModalMessage(
+      body.type === "sqlite"
+        ? "Fill in a name and choose a file before testing."
+        : "Fill in at least a name and host before testing.",
+      "error",
+    );
     return;
   }
   btn.disabled = true;
@@ -2439,8 +2687,11 @@ document.getElementById("testConn").addEventListener("click", async () => {
 
 document.getElementById("saveConn").addEventListener("click", async () => {
   const body = readModalForm();
-  if (!body.name || !body.host) {
-    showModalMessage("Name and host are required.", "error");
+  if (!body.name || (body.type === "sqlite" ? !body.filePath : !body.host)) {
+    showModalMessage(
+      body.type === "sqlite" ? "Name and a chosen file are required." : "Name and host are required.",
+      "error",
+    );
     return;
   }
   const btn = document.getElementById("saveConn");
@@ -2451,12 +2702,14 @@ document.getElementById("saveConn").addEventListener("click", async () => {
       id: created.id,
       name: created.name,
       type: created.type,
-      host: `${created.host}:${created.port}`,
+      host:
+        created.type === "sqlite" ? (created.filePath || "").split(/[\\/]/).pop() : `${created.host}:${created.port}`,
       databases: null,
     });
     renderTree();
     renderConnectionSelect();
     closeModalFn();
+    resetSqliteUploadField();
     ["newConnName", "newConnHost", "newConnPort", "newConnUser", "newConnPass", "newConnDb"].forEach(
       (id) => (document.getElementById(id).value = ""),
     );
@@ -2884,7 +3137,7 @@ async function loadLocalModels() {
     }
     const uploadOpt = document.createElement("option");
     uploadOpt.value = "__upload_local__";
-    uploadOpt.textContent = "Upload a local model…";
+    uploadOpt.textContent = "+ Upload a local model…";
     group.appendChild(uploadOpt);
   } catch (err) {
     group.innerHTML = '<option value="" disabled>Could not load local models</option>';
@@ -2977,7 +3230,7 @@ async function loadCustomEndpointModels() {
     opt.textContent = "Could not reach endpoint";
     group.appendChild(opt);
   }
-  group.appendChild(configureOpt("Reconfigure endpoint…"));
+  group.appendChild(configureOpt("+ Reconfigure endpoint…"));
 }
 
 async function initChatModelPicker() {
@@ -3324,6 +3577,7 @@ async function sendChatMessage(tab, text) {
   session.messages.push({ role: "user", content: text });
   session.updatedAt = new Date().toISOString();
   renderChatPane();
+  persistSession();
 
   const model = document.getElementById("chatModelSelect").value;
   const sendBtn = document.getElementById("chatSend");
@@ -3560,7 +3814,7 @@ async function init() {
       id: c.id,
       name: c.name,
       type: c.type,
-      host: `${c.host}:${c.port}`,
+      host: c.type === "sqlite" ? (c.filePath || "").split(/[\\/]/).pop() : `${c.host}:${c.port}`,
       databases: null,
     }));
   } catch (err) {
