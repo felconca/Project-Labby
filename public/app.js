@@ -671,7 +671,7 @@ function renderConnectionSelect() {
   });
   const addOpt = document.createElement("option");
   addOpt.value = "__add__";
-  addOpt.textContent = "+ Add new connection…";
+  addOpt.textContent = "Add new connection…";
   select.appendChild(addOpt);
 
   const tab = getActiveTab();
